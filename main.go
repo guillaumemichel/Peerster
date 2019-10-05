@@ -6,6 +6,7 @@ import (
 	"os"
 
 	gossiper "github.com/guillaumemichel/Peerster/gossiper"
+	peers "github.com/guillaumemichel/Peerster/peers"
 )
 
 func main() {
@@ -14,7 +15,7 @@ func main() {
 	gossipAddr := flag.String("gossipAddr", "127.0.0.1:5000",
 		"ip:port for the gossiper")
 	name := flag.String("name", "", "name of the gossiper")
-	peers := flag.String("peers", "",
+	peersInput := flag.String("peers", "",
 		"comma separated list of peers of the form ip:port")
 	simple := flag.Bool("simple", false,
 		"run gossiper in simple broadcast mode")
@@ -25,8 +26,15 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	fmt.Println(*UIPort+" "+*gossipAddr, *name, *peers, *simple)
+	if !*simple {
+		fmt.Println("Sorry, only simple messages implemented yet :)")
+		os.Exit(0)
+	}
 
+	peerList := peers.ParsePeers(*peersInput)
 	gossiper := gossiper.NewGossiper(*gossipAddr, *name)
 	gossiper.Start()
+
+	fmt.Println(peerList)
+	fmt.Printf("Port number : %s\n", *UIPort)
 }
