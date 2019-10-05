@@ -28,5 +28,5 @@ func main() {
 	fmt.Println(*UIPort+" "+*gossipAddr, *name, *peers, *simple)
 
 	gossiper := gossiper.NewGossiper(*gossipAddr, *name)
-	fmt.Fprintln(gossiper)
+	gossiper.Start()
 }
