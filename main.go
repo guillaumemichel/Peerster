@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	gossiper "github.com/guillaumemichel/Peerster/gossiper"
-	peers "github.com/guillaumemichel/Peerster/peers"
+	g "github.com/guillaumemichel/Peerster/gossiper"
+	p "github.com/guillaumemichel/Peerster/peers"
 )
 
 func main() {
@@ -31,10 +31,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	peerList := peers.ParsePeers(*peersInput)
-	gossiper := gossiper.NewGossiper(*gossipAddr, *name)
-	gossiper.Start()
+	peerList := p.ParsePeers(*peersInput)
+	g.StartNewGossiper(gossipAddr, name, peerList)
 
-	fmt.Println(peerList)
 	fmt.Printf("Port number : %s\n", *UIPort)
 }

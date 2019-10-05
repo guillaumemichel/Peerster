@@ -24,7 +24,7 @@ func ParsePeers(peerList string) *PeerList {
 	// TODO: sanitize ip addresses
 
 	var addrList []net.UDPAddr
-	for i, v := range peersStr {
+	for _, v := range peersStr {
 		// split up the ip from the port
 		addr := strings.Split(v, ":")
 
@@ -44,7 +44,6 @@ func ParsePeers(peerList string) *PeerList {
 		addrList = append(addrList, net.UDPAddr{
 			IP:   ip,
 			Port: port,
-			Zone: "Host " + strconv.Itoa(i),
 		})
 	}
 

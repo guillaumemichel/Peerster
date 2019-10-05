@@ -3,18 +3,21 @@ package gossiper
 import (
 	"log"
 	"net"
+
+	p "github.com/guillaumemichel/Peerster/peers"
 )
 
 // Gossiper : a gossiper
 type Gossiper struct {
 	Name    string
-	address *net.UDPAddr
-	conn    *net.UDPConn
+	Address *net.UDPAddr
+	Conn    *net.UDPConn
+	Peers   *p.PeerList
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
-func NewGossiper(address, name string) *Gossiper {
-	udpAddr, err := net.ResolveUDPAddr("udp4", address)
+func NewGossiper(address, name *string, peerList *p.PeerList) *Gossiper {
+	udpAddr, err := net.ResolveUDPAddr("udp4", *address)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -23,13 +26,19 @@ func NewGossiper(address, name string) *Gossiper {
 		log.Panic(err)
 	}
 	return &Gossiper{
-		address: udpAddr,
-		conn:    udpConn,
-		Name:    name,
+		Address: udpAddr,
+		Conn:    udpConn,
+		Name:    *name,
+		Peers:   peerList,
 	}
 }
 
-// Start : starts a given gossiper
-func (g *Gossiper) Start() {
+// Run : runs a given gossiper
+func (g *Gossiper) Run() {
 
+}
+
+// StartNewGossiper : Creates and starts a new gossiper
+func StartNewGossiper(address, name *string, peerList *p.PeerList) {
+	NewGossiper(address, name, peerList).Run()
 }
