@@ -28,3 +28,8 @@ func NewGossiper(address, name string) *Gossiper {
 		Name:    name,
 	}
 }
+
+// Start : starts a given gossiper
+func (g *Gossiper) Start() {
+
+}

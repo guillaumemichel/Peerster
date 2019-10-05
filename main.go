@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	. "github.com/guillaumemichel/Peerster/gossiper"
+	gossiper "github.com/guillaumemichel/Peerster/gossiper"
 )
 
 func main() {
@@ -27,5 +27,6 @@ func main() {
 
 	fmt.Println(*UIPort+" "+*gossipAddr, *name, *peers, *simple)
 
-	gossiper := newGossiper()
+	gossiper := gossiper.NewGossiper(*gossipAddr, *name)
+	fmt.Fprintln(gossiper)
 }
