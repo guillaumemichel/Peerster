@@ -8,7 +8,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/DeDiS/protobuf"
+	protobuf "github.com/DeDiS/protobuf"
 	t "github.com/guillaumemichel/Peerster/types"
 )
 

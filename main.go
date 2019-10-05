@@ -32,7 +32,7 @@ func main() {
 	}
 
 	peerList := p.ParsePeers(*peersInput)
-	g.StartNewGossiper(gossipAddr, name, peerList)
+	g.StartNewGossiper(gossipAddr, name, UIPort, peerList)
 
 	fmt.Printf("Port number : %s\n", *UIPort)
 }
