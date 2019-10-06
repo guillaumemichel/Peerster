@@ -19,6 +19,7 @@ func main() {
 		"comma separated list of peers of the form ip:port")
 	simple := flag.Bool("simple", false,
 		"run gossiper in simple broadcast mode")
+	//bufferSize := flag.Int("buffer-size", 1024, "buffer size of the udp socket")
 
 	flag.Parse()
 	flag.Usage = func() {

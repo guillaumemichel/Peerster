@@ -11,10 +11,8 @@ import (
 	t "github.com/guillaumemichel/Peerster/types"
 )
 
-// Message : ntm
-type Message struct {
-	Text string
-}
+// TODO: client can edit bufferSize
+var bufferSize int = 2048
 
 // Gossiper : a gossiper
 type Gossiper struct {
@@ -24,6 +22,7 @@ type Gossiper struct {
 	GossipConn *net.UDPConn
 	ClientConn *net.UDPConn
 	Peers      *p.PeerList
+	BufSize    int
 }
 
 // ErrorCheck : check for non critical error, and logs the result
@@ -70,6 +69,7 @@ func NewGossiper(address, name, UIPort *string, peerList *p.PeerList) *Gossiper 
 		GossipConn: gossConn,
 		ClientConn: cliConn,
 		Peers:      peerList,
+		BufSize:    bufferSize,
 	}
 }
 
@@ -89,32 +89,78 @@ func (g *Gossiper) PrintMessageClient(packet *t.GossipPacket) {
 	g.PrintPeers()
 }
 
+// PrintMessageGossip : print messages received from gossipers
+func (g *Gossiper) PrintMessageGossip(pack *t.GossipPacket) {
+
+	fmt.Printf(`SIMPLE MESSAGE origin %s from
+		%s contents %s`, pack.Simple.OriginalName, pack.Simple.RelayPeerAddr,
+		pack.Simple.Contents)
+	g.PrintPeers()
+}
+
+// ReplaceOriginalNameSimple : replaces the original name of a simple message
+func (g *Gossiper) ReplaceOriginalNameSimple(msg *t.SimpleMessage) *t.SimpleMessage {
+	msg.OriginalName = g.Name
+	return msg
+}
+
+// SendToAll : Sends a message to all known gossipers
+func (g *Gossiper) SendToAll(packet []byte) {
+
+}
+
 // HandleMessage : handles a message on arrival
 func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
-	gossip bool) {
+	mode string) {
 	rcvMsg := t.GossipPacket{}
 
 	err := protobuf.Decode(rcvBytes, &rcvMsg)
-	ErrorCheck(err)
+	if err != nil && len(rcvBytes) >= g.BufSize {
+		log.Printf(`Warning: incoming message possibly larger than %d bytes 
+			couldn't be read!`, bufferSize)
+	} else {
+		ErrorCheck(err)
 
-	g.PrintMessageClient(&rcvMsg)
+		switch mode {
+		case "gossip":
+			g.PrintMessageGossip(&rcvMsg)
+		case "client":
+			g.PrintMessageClient(&rcvMsg)
+		default:
+			log.Fatal("Invalid message")
+		}
+	}
+
 }
 
-// ListenClient : listen for new messages
-func (g *Gossiper) ListenClient() {
-	buf := make([]byte, 1024)
+// Listen : listen for new messages from clients
+func (g *Gossiper) Listen(udpConn *net.UDPConn) {
+	buf := make([]byte, g.BufSize)
+	var mode string
 
 	for {
-		m, addr, err := g.ClientConn.ReadFromUDP(buf)
+		m, addr, err := udpConn.ReadFromUDP(buf)
 		ErrorCheck(err)
-		// may be vulnerable to DOS from client, but fast otherwise
-		go g.HandleMessage(buf[:m], addr, false)
+
+		if udpConn == g.GossipConn {
+			mode = "gossip"
+		} else if udpConn == g.ClientConn {
+			mode = "client"
+		} else {
+			mode = "unknown"
+		}
+
+		go g.HandleMessage(buf[:m], addr, mode)
 	}
 }
 
 // Run : runs a given gossiper
 func (g *Gossiper) Run() {
-	g.ListenClient()
+	go g.Listen(g.ClientConn)
+	go g.Listen(g.GossipConn)
+
+	for {
+	}
 }
 
 // StartNewGossiper : Creates and starts a new gossiper
