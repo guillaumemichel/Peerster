@@ -51,14 +51,21 @@ func main() {
 	}
 
 	// creating upd connection
-	udpConn, err := net.ListenUDP("udp4", &address)
+	udpConn, err := net.DialUDP("udp4", nil, &address)
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
 
 	// serializing the packet to send
 	bytesToSend, err := protobuf.Encode(&packetToSend)
+	if err != nil {
+		log.Panic("Error: couldn't serialize message")
+	}
 
 	// sending the packet over udp
-	udpConn.WriteToUDP(bytesToSend, &address)
+	_, err = udpConn.Write(bytesToSend)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(packetToSend)
 }

@@ -11,6 +11,11 @@ import (
 	t "github.com/guillaumemichel/Peerster/types"
 )
 
+// Message : ntm
+type Message struct {
+	Text string
+}
+
 // Gossiper : a gossiper
 type Gossiper struct {
 	Name       string
@@ -69,37 +74,36 @@ func NewGossiper(address, name, UIPort *string, peerList *p.PeerList) *Gossiper 
 }
 
 // PrintMessageClient : print messages from the client
-func (g *Gossiper) PrintMessageClient(packet t.GossipPacket) {
-	simpleM := packet.Simple
-
-	fmt.Println("CLIENT MESSAGE ", simpleM.Contents)
+func (g *Gossiper) PrintMessageClient(packet *t.GossipPacket) {
+	fmt.Println("CLIENT MESSAGE", packet.Simple.Contents)
 }
 
 // HandleMessage : handles a message on arrival
-func (g *Gossiper) HandleMessage(rcvBytes []byte, m int, udpAddr *net.UDPAddr) {
-	var rcvMsg t.GossipPacket
+func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
+	gossip bool) {
+	rcvMsg := t.GossipPacket{}
 
-	err := protobuf.Decode(rcvBytes, rcvMsg)
+	err := protobuf.Decode(rcvBytes, &rcvMsg)
 	ErrorCheck(err)
 
-	g.PrintMessageClient(rcvMsg)
+	g.PrintMessageClient(&rcvMsg)
 }
 
 // ListenClient : listen for new messages
 func (g *Gossiper) ListenClient() {
-	var rcvBytes []byte
+	buf := make([]byte, 1024)
 
 	for {
-		m, addr, err := g.ClientConn.ReadFromUDP(rcvBytes)
+		m, addr, err := g.ClientConn.ReadFromUDP(buf)
 		ErrorCheck(err)
 		// may be vulnerable to DOS from client, but fast otherwise
-		go g.HandleMessage(rcvBytes, m, addr)
+		go g.HandleMessage(buf[:m], addr, false)
 	}
 }
 
 // Run : runs a given gossiper
 func (g *Gossiper) Run() {
-	go g.ListenClient()
+	g.ListenClient()
 }
 
 // StartNewGossiper : Creates and starts a new gossiper
