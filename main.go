@@ -6,7 +6,6 @@ import (
 	"os"
 
 	g "github.com/guillaumemichel/Peerster/gossiper"
-	p "github.com/guillaumemichel/Peerster/peers"
 )
 
 func main() {
@@ -32,6 +31,5 @@ func main() {
 		os.Exit(0)
 	}
 
-	peerList := p.ParsePeers(*peersInput)
-	g.StartNewGossiper(gossipAddr, name, UIPort, peerList)
+	g.StartNewGossiper(gossipAddr, name, UIPort, peersInput)
 }

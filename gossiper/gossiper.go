@@ -6,9 +6,7 @@ import (
 	"net"
 	"strconv"
 
-	protobuf "github.com/DeDiS/protobuf"
-	p "github.com/guillaumemichel/Peerster/peers"
-	t "github.com/guillaumemichel/Peerster/types"
+	u "github.com/guillaumemichel/Peerster/utils"
 )
 
 // TODO: client can edit bufferSize
@@ -21,7 +19,7 @@ type Gossiper struct {
 	ClientAddr *net.UDPAddr
 	GossipConn *net.UDPConn
 	ClientConn *net.UDPConn
-	Peers      *p.PeerList
+	Peers      []net.UDPAddr
 	BufSize    int
 }
 
@@ -40,7 +38,7 @@ func PanicCheck(err error) {
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
-func NewGossiper(address, name, UIPort *string, peerList *p.PeerList) *Gossiper {
+func NewGossiper(address, name, UIPort, peerList *string) *Gossiper {
 
 	// define gossip address and connection for the new gossiper
 	gossAddr, err := net.ResolveUDPAddr("udp4", *address)
@@ -62,13 +60,15 @@ func NewGossiper(address, name, UIPort *string, peerList *p.PeerList) *Gossiper 
 	cliConn, err := net.ListenUDP("udp4", cliAddr)
 	PanicCheck(err)
 
+	peers := u.ParsePeers(peerList)
+
 	return &Gossiper{
 		Name:       *name,
 		GossipAddr: gossAddr,
 		ClientAddr: cliAddr,
 		GossipConn: gossConn,
 		ClientConn: cliConn,
-		Peers:      peerList,
+		Peers:      *peers,
 		BufSize:    bufferSize,
 	}
 }
@@ -76,7 +76,7 @@ func NewGossiper(address, name, UIPort *string, peerList *p.PeerList) *Gossiper 
 // PrintPeers : print the known peers from the gossiper
 func (g *Gossiper) PrintPeers() {
 	toPrint := "PEERS "
-	for _, v := range g.Peers.Addresses {
+	for _, v := range g.Peers {
 		toPrint += v.String() + ","
 	}
 	toPrint = toPrint[:len(toPrint)-1]
@@ -84,48 +84,70 @@ func (g *Gossiper) PrintPeers() {
 }
 
 // PrintMessageClient : print messages from the client
-func (g *Gossiper) PrintMessageClient(packet *t.GossipPacket) {
+func (g *Gossiper) PrintMessageClient(packet *u.GossipPacket) {
 	fmt.Println("CLIENT MESSAGE", packet.Simple.Contents)
 	g.PrintPeers()
 }
 
 // PrintMessageGossip : print messages received from gossipers
-func (g *Gossiper) PrintMessageGossip(pack *t.GossipPacket) {
+func (g *Gossiper) PrintMessageGossip(pack *u.GossipPacket) {
 
-	fmt.Printf(`SIMPLE MESSAGE origin %s from
-		%s contents %s`, pack.Simple.OriginalName, pack.Simple.RelayPeerAddr,
+	fmt.Printf("SIMPLE MESSAGE origin %s from %s contents %s\n",
+		pack.Simple.OriginalName, pack.Simple.RelayPeerAddr,
 		pack.Simple.Contents)
 	g.PrintPeers()
 }
 
 // ReplaceOriginalNameSimple : replaces the original name of a simple message
-func (g *Gossiper) ReplaceOriginalNameSimple(msg *t.SimpleMessage) *t.SimpleMessage {
+// with its own name
+func (g *Gossiper) ReplaceOriginalNameSimple(msg *u.SimpleMessage) *u.SimpleMessage {
 	msg.OriginalName = g.Name
+	return msg
+}
+
+// ReplaceRelayPeerSimple : replaces the relay peer of a simple message with its
+// own address
+func (g *Gossiper) ReplaceRelayPeerSimple(msg *u.SimpleMessage) *u.SimpleMessage {
+	msg.RelayPeerAddr = g.GossipAddr.String()
+	if msg.RelayPeerAddr == "<nil>" {
+		log.Fatal("cannot replace relay peer address")
+	}
 	return msg
 }
 
 // SendToAll : Sends a message to all known gossipers
 func (g *Gossiper) SendToAll(packet []byte) {
-
+	for _, v := range g.Peers {
+		g.GossipConn.WriteToUDP(packet, &v)
+	}
 }
 
 // HandleMessage : handles a message on arrival
 func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 	mode string) {
-	rcvMsg := t.GossipPacket{}
+	rcvMsg, ok := u.UnprotobufMessage(rcvBytes)
 
-	err := protobuf.Decode(rcvBytes, &rcvMsg)
-	if err != nil && len(rcvBytes) >= g.BufSize {
+	if !ok && len(rcvBytes) >= g.BufSize {
 		log.Printf(`Warning: incoming message possibly larger than %d bytes 
-			couldn't be read!`, bufferSize)
+			couldn't be read!`, g.BufSize)
 	} else {
-		ErrorCheck(err)
-
+		// TODO: document that shit
 		switch mode {
 		case "gossip":
-			g.PrintMessageGossip(&rcvMsg)
+			sm := rcvMsg.Simple
+			g.PrintMessageGossip(rcvMsg)
+			sm = g.ReplaceRelayPeerSimple(sm)
+			packet := u.ProtobufMessage(&u.GossipPacket{Simple: sm})
+			// TODO: add address to known hosts
+
+			g.SendToAll(packet)
 		case "client":
-			g.PrintMessageClient(&rcvMsg)
+			sm := rcvMsg.Simple
+			g.PrintMessageClient(rcvMsg)
+			sm = g.ReplaceOriginalNameSimple(sm)
+			sm = g.ReplaceRelayPeerSimple(sm)
+			packet := u.ProtobufMessage(&u.GossipPacket{Simple: sm})
+			g.SendToAll(packet)
 		default:
 			log.Fatal("Invalid message")
 		}
@@ -164,6 +186,6 @@ func (g *Gossiper) Run() {
 }
 
 // StartNewGossiper : Creates and starts a new gossiper
-func StartNewGossiper(address, name, UIPort *string, peerList *p.PeerList) {
+func StartNewGossiper(address, name, UIPort, peerList *string) {
 	NewGossiper(address, name, UIPort, peerList).Run()
 }

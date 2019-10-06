@@ -1,4 +1,4 @@
-package types
+package utils
 
 // SimpleMessage : a simple message structure containing the original sender's
 // name, the relay peer address, and the content of the message

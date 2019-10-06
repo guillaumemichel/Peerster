@@ -8,8 +8,7 @@ import (
 	"os"
 	"strconv"
 
-	protobuf "github.com/DeDiS/protobuf"
-	t "github.com/guillaumemichel/Peerster/types"
+	u "github.com/guillaumemichel/Peerster/utils"
 )
 
 func main() {
@@ -27,13 +26,13 @@ func main() {
 	destination := "127.0.0.1"
 
 	// generating simple message in gossip packet
-	simpleM := t.SimpleMessage{
+	simpleM := u.SimpleMessage{
 		OriginalName:  name,
 		RelayPeerAddr: name,
 		Contents:      *msg,
 	}
 
-	packetToSend := t.GossipPacket{Simple: &simpleM}
+	packetToSend := u.GossipPacket{Simple: &simpleM}
 
 	// parse destination
 	ip := net.ParseIP(destination)
@@ -57,10 +56,7 @@ func main() {
 	}
 
 	// serializing the packet to send
-	bytesToSend, err := protobuf.Encode(&packetToSend)
-	if err != nil {
-		log.Panic("Error: couldn't serialize message")
-	}
+	bytesToSend := u.ProtobufMessage(&packetToSend)
 
 	// sending the packet over udp
 	_, err = udpConn.Write(bytesToSend)
