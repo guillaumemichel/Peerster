@@ -75,12 +75,21 @@ func NewGossiper(address, name, UIPort, peerList *string) *Gossiper {
 
 // PrintPeers : print the known peers from the gossiper
 func (g *Gossiper) PrintPeers() {
-	toPrint := "PEERS "
-	for _, v := range g.Peers {
-		toPrint += v.String() + ","
+	fmt.Println("PEERS", g.PeersToString())
+}
+
+// PeersToString : return a string containing the list of known peers
+func (g *Gossiper) PeersToString() string {
+	str := ""
+	// if not peers return empty string
+	if len(g.Peers) == 0 {
+		return str
 	}
-	toPrint = toPrint[:len(toPrint)-1]
-	fmt.Println(toPrint)
+	for _, v := range g.Peers {
+		str += v.String() + ","
+	}
+	// don't return the last ","
+	return str[:len(str)-1]
 }
 
 // PrintMessageClient : print messages from the client
@@ -115,10 +124,22 @@ func (g *Gossiper) ReplaceRelayPeerSimple(msg *u.SimpleMessage) *u.SimpleMessage
 	return msg
 }
 
-// SendToAll : Sends a message to all known gossipers
-func (g *Gossiper) SendToAll(packet []byte) {
+// AddPeer : adds the given peer to peers list if not already in it
+func (g *Gossiper) AddPeer(addr *net.UDPAddr) {
 	for _, v := range g.Peers {
-		g.GossipConn.WriteToUDP(packet, &v)
+		if u.EqualAddr(&v, addr) {
+			return
+		}
+	}
+	g.Peers = append(g.Peers, *addr)
+}
+
+// Propagate : Sends a message to all known gossipers
+func (g *Gossiper) Propagate(packet []byte, sender *net.UDPAddr) {
+	for _, v := range g.Peers {
+		if !u.EqualAddr(&v, sender) {
+			g.GossipConn.WriteToUDP(packet, &v)
+		}
 	}
 }
 
@@ -131,23 +152,29 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 		log.Printf(`Warning: incoming message possibly larger than %d bytes 
 			couldn't be read!`, g.BufSize)
 	} else {
-		// TODO: document that shit
+		sm := rcvMsg.Simple
+		if udpAddr.String() != sm.RelayPeerAddr {
+			println("Warning: relay peer address and sender address do not match")
+		}
+
 		switch mode {
 		case "gossip":
-			sm := rcvMsg.Simple
+
+			g.AddPeer(udpAddr)
 			g.PrintMessageGossip(rcvMsg)
 			sm = g.ReplaceRelayPeerSimple(sm)
 			packet := u.ProtobufMessage(&u.GossipPacket{Simple: sm})
-			// TODO: add address to known hosts
-
-			g.SendToAll(packet)
+			g.Propagate(packet, udpAddr)
 		case "client":
-			sm := rcvMsg.Simple
+			// print the message in the console
 			g.PrintMessageClient(rcvMsg)
+			// update the SimpleMessage
 			sm = g.ReplaceOriginalNameSimple(sm)
 			sm = g.ReplaceRelayPeerSimple(sm)
+			// serialize the message
 			packet := u.ProtobufMessage(&u.GossipPacket{Simple: sm})
-			g.SendToAll(packet)
+			// broadcast the message to all hosts
+			g.Propagate(packet, nil)
 		default:
 			log.Fatal("Invalid message")
 		}

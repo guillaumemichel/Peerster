@@ -25,15 +25,6 @@ func main() {
 	name := "Client"
 	destination := "127.0.0.1"
 
-	// generating simple message in gossip packet
-	simpleM := u.SimpleMessage{
-		OriginalName:  name,
-		RelayPeerAddr: name,
-		Contents:      *msg,
-	}
-
-	packetToSend := u.GossipPacket{Simple: &simpleM}
-
 	// parse destination
 	ip := net.ParseIP(destination)
 
@@ -54,6 +45,17 @@ func main() {
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
+
+	localAddr := udpConn.LocalAddr().String()
+
+	// generating simple message in gossip packet
+	simpleM := u.SimpleMessage{
+		OriginalName:  name,
+		RelayPeerAddr: localAddr,
+		Contents:      *msg,
+	}
+
+	packetToSend := u.GossipPacket{Simple: &simpleM}
 
 	// serializing the packet to send
 	bytesToSend := u.ProtobufMessage(&packetToSend)

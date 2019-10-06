@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"log"
 	"net"
 	"strconv"
@@ -69,4 +70,14 @@ func ParsePeers(peerList *string) *[]net.UDPAddr {
 	}
 
 	return &addrList
+}
+
+// EqualAddr : compares the given UDPAddr, returns false if they are different
+// and true otherwise
+func EqualAddr(addr1, addr2 *net.UDPAddr) bool {
+	if addr1 == nil || addr2 == nil {
+		return false
+	}
+	return (bytes.Equal(addr1.IP, addr2.IP) && addr1.Port == addr2.Port &&
+		addr1.Zone == addr2.Zone)
 }
