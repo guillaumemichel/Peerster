@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"strings"
 
 	u "github.com/guillaumemichel/Peerster/utils"
 )
@@ -21,6 +22,7 @@ type Gossiper struct {
 	ClientConn *net.UDPConn
 	Peers      []net.UDPAddr
 	BufSize    int
+	MsgCount   int
 }
 
 // ErrorCheck : check for non critical error, and logs the result
@@ -70,6 +72,7 @@ func NewGossiper(address, name, UIPort, peerList *string) *Gossiper {
 		ClientConn: cliConn,
 		Peers:      *peers,
 		BufSize:    bufferSize,
+		MsgCount:   0,
 	}
 }
 
@@ -126,20 +129,21 @@ func (g *Gossiper) ReplaceRelayPeerSimple(msg *u.SimpleMessage) *u.SimpleMessage
 
 // AddPeer : adds the given peer to peers list if not already in it
 func (g *Gossiper) AddPeer(addr *net.UDPAddr) {
-	for _, v := range g.Peers {
-		if u.EqualAddr(&v, addr) {
-			return
-		}
+	if !strings.Contains(g.PeersToString(), addr.String()) {
+		g.Peers = append(g.Peers, *addr)
 	}
-	g.Peers = append(g.Peers, *addr)
 }
 
 // Propagate : Sends a message to all known gossipers
 func (g *Gossiper) Propagate(packet []byte, sender *net.UDPAddr) {
-	for _, v := range g.Peers {
-		if !u.EqualAddr(&v, sender) {
-			g.GossipConn.WriteToUDP(packet, &v)
+	if true {
+		//if g.MsgCount < 100 {
+		for _, v := range g.Peers {
+			if !u.EqualAddr(&v, sender) {
+				g.GossipConn.WriteToUDP(packet, &v)
+			}
 		}
+		//g.MsgCount++
 	}
 }
 

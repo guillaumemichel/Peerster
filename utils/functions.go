@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"bytes"
 	"log"
 	"net"
 	"strconv"
@@ -78,6 +77,7 @@ func EqualAddr(addr1, addr2 *net.UDPAddr) bool {
 	if addr1 == nil || addr2 == nil {
 		return false
 	}
-	return (bytes.Equal(addr1.IP, addr2.IP) && addr1.Port == addr2.Port &&
-		addr1.Zone == addr2.Zone)
+	return addr1.String() == addr2.String()
+	/* return (bytes.Equal(addr1.IP, addr2.IP) && addr1.Port == addr2.Port &&
+	addr1.Zone == addr2.Zone)*/
 }
