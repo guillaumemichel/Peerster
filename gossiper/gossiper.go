@@ -73,9 +73,20 @@ func NewGossiper(address, name, UIPort *string, peerList *p.PeerList) *Gossiper 
 	}
 }
 
+// PrintPeers : print the known peers from the gossiper
+func (g *Gossiper) PrintPeers() {
+	toPrint := "PEERS "
+	for _, v := range g.Peers.Addresses {
+		toPrint += v.String() + ","
+	}
+	toPrint = toPrint[:len(toPrint)-1]
+	fmt.Println(toPrint)
+}
+
 // PrintMessageClient : print messages from the client
 func (g *Gossiper) PrintMessageClient(packet *t.GossipPacket) {
 	fmt.Println("CLIENT MESSAGE", packet.Simple.Contents)
+	g.PrintPeers()
 }
 
 // HandleMessage : handles a message on arrival

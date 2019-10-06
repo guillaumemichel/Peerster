@@ -9,7 +9,7 @@ import (
 
 // PeerList : peerlist that every peer will maintain about other known hosts
 type PeerList struct {
-	peers []net.UDPAddr
+	Addresses []net.UDPAddr
 }
 
 // ParsePeers : infe
@@ -47,5 +47,5 @@ func ParsePeers(peerList string) *PeerList {
 		})
 	}
 
-	return &PeerList{peers: addrList}
+	return &PeerList{Addresses: addrList}
 }
