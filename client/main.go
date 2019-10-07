@@ -11,6 +11,14 @@ import (
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
+// RequireMessage : requires a message
+func RequireMessage(msg *string) {
+	if *msg == "" {
+		fmt.Println("Error: message required!")
+		os.Exit(1)
+	}
+}
+
 func main() {
 	// treating the flags
 	UIPort := flag.String("UIPort", "8080", "port for the UI client")
@@ -23,6 +31,7 @@ func main() {
 	}
 
 	destination := "127.0.0.1"
+	RequireMessage(msg)
 
 	// parse destination
 	ip := net.ParseIP(destination)
