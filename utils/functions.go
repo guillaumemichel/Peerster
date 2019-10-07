@@ -9,8 +9,31 @@ import (
 	"github.com/DeDiS/protobuf"
 )
 
-// ProtobufMessage : encapsulates a message using protobuf
-func ProtobufMessage(msg *GossipPacket) []byte {
+// ProtobufMessage : encapsulate a client message using protobuf
+func ProtobufMessage(msg *Message) []byte {
+	// serializing the packet to send
+	bytesToSend, err := protobuf.Encode(msg)
+	if err != nil {
+		log.Panic("Error: couldn't serialize message")
+	}
+	return bytesToSend
+}
+
+// UnprotobufMessage : decapsulate a gossip message using protobuf
+func UnprotobufMessage(packet []byte) (*Message, bool) {
+	rcvMsg := Message{}
+
+	err := protobuf.Decode(packet, &rcvMsg)
+	ok := true
+	if err != nil {
+		log.Println(err)
+		ok = false
+	}
+	return &rcvMsg, ok
+}
+
+// ProtobufGossip : encapsulates a gossip message using protobuf
+func ProtobufGossip(msg *GossipPacket) []byte {
 
 	// serializing the packet to send
 	bytesToSend, err := protobuf.Encode(msg)
@@ -20,8 +43,8 @@ func ProtobufMessage(msg *GossipPacket) []byte {
 	return bytesToSend
 }
 
-// UnprotobufMessage : decapsulate a message using protobuf
-func UnprotobufMessage(packet []byte) (*GossipPacket, bool) {
+// UnprotobufGossip : decapsulate a gossip message using protobuf
+func UnprotobufGossip(packet []byte) (*GossipPacket, bool) {
 	rcvMsg := GossipPacket{}
 
 	err := protobuf.Decode(packet, &rcvMsg)
