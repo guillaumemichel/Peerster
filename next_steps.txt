@@ -4,6 +4,13 @@ HW1 part 2
 - RumorMessage type
 - Status message type
 
+Attribute of Gossiper: map[unique id -> chan]
+MessageHandler sends status to StatusHandler through channel
+StatusHandler that write to chan when message arrives
+Timeout on Rumor message
+
+StatusHandler can be in MessageHandler, no need for further go routine
+
 HW1 part 3
 
 

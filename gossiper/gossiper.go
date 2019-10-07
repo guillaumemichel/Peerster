@@ -201,6 +201,11 @@ func (g *Gossiper) ReceiveOK(ok bool, rcvBytes []byte) bool {
 	return true
 }
 
+// DealWithStatus : deals with status messages
+func (g *Gossiper) DealWithStatus() {
+
+}
+
 // HandleMessage : handles a message on arrival
 func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 	gossip bool) {
@@ -266,7 +271,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 					m := rcvMsg.Status
 					// prints message to console
 					g.PrintStatusMessage(m, &addrStr)
-					// TODO send request
+					g.DealWithStatus()
 				}
 			}
 		}
