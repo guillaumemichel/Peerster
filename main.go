@@ -26,10 +26,5 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	if !*simple {
-		fmt.Println("Sorry, only simple messages implemented yet :)")
-		os.Exit(0)
-	}
-
 	g.StartNewGossiper(gossipAddr, name, UIPort, peersInput)
 }

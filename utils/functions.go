@@ -1,7 +1,11 @@
 package utils
 
 import (
+	"crypto/rand"
+	"fmt"
 	"log"
+	"math/big"
+	r "math/rand"
 	"net"
 	"strconv"
 	"strings"
@@ -103,4 +107,48 @@ func EqualAddr(addr1, addr2 *net.UDPAddr) bool {
 	return addr1.String() == addr2.String()
 	/* return (bytes.Equal(addr1.IP, addr2.IP) && addr1.Port == addr2.Port &&
 	addr1.Zone == addr2.Zone)*/
+}
+
+// GetRand : returns a "fake" random number (the same at all executions)
+func GetRand(n int) int {
+	return r.Intn(n)
+}
+
+// GetRealRand : returns a really random number generated with crypto package
+func GetRealRand(n int) int {
+	result, _ := rand.Int(rand.Reader, big.NewInt(int64(n)))
+	return int(result.Int64())
+}
+
+// TestMessageType : test if the packet only contains a message type and prints
+// an error and returns false if it is not the case
+func TestMessageType(p *GossipPacket) bool {
+	if (p.Simple != nil && p.Rumor != nil) ||
+		(p.Simple != nil && p.Status != nil) ||
+		(p.Rumor != nil && p.Status != nil) ||
+		(p.Simple == nil && p.Rumor == nil && p.Status == nil) {
+		// at least 2 message types or none are present in the packet
+		fmt.Println("Error: the received GossipPacket contains multiple",
+			"messages")
+		return false
+	}
+	return true
+}
+
+// RemoveAddrFromPeers : remove the given address from the array of addresses
+func RemoveAddrFromPeers(peers *[]net.UDPAddr, addr *net.UDPAddr) *[]net.UDPAddr {
+
+	for i, v := range *peers {
+		if EqualAddr(&v, addr) && i == len(*peers)-1 {
+			var toReturn []net.UDPAddr
+			if i == len(*peers)-1 {
+				toReturn = append((*peers)[:i])
+			} else {
+				toReturn = append((*peers)[:i], (*peers)[i+1:]...)
+			}
+			return &toReturn
+		}
+	}
+	fmt.Println("Warning: couldn't remove address from peers")
+	return peers
 }

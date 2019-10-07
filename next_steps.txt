@@ -1,5 +1,12 @@
 HW1 part 2
 
+- VectorClock
 - RumorMessage type
+- Status message type
 
 HW1 part 3
+
+
+
+IDEA ?
+- User can give first ID number for rumor message
