@@ -40,3 +40,10 @@ type GossipPacket struct {
 	Rumor  *RumorMessage
 	Status *StatusPacket
 }
+
+// HistoryMessage : message stored in Gossiper history in an arry identifying
+// the origin of those messages
+type HistoryMessage struct {
+	ID   uint32
+	Text string
+}

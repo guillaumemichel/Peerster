@@ -135,10 +135,17 @@ func TestMessageType(p *GossipPacket) bool {
 	return true
 }
 
-// GetACKIdentifier : return the string corresponding to the ACK identifier of
-// the given rumor
-func GetACKIdentifier(rumor *RumorMessage, dest *string) *string {
-	str := strconv.Itoa(int(rumor.ID)) + "@" + rumor.Origin + "@" + *dest
+// GetACKIdentifierSend : return the string corresponding to the ACK identifier
+// of the given rumor when sending a message
+func GetACKIdentifierSend(rumor *RumorMessage, dest *string) *string {
+	str := strconv.Itoa(int(rumor.ID+1)) + "@" + rumor.Origin + "@" + *dest
+	return &str
+}
+
+// GetACKIdentifierReceive : return the string corresponding to the ACK
+// identifier of the given ack when receiving a message
+func GetACKIdentifierReceive(nextID, rumorOrigin, sender *string) *string {
+	str := *nextID + "@" + *rumorOrigin + "@" + *sender
 	return &str
 }
 
