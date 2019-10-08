@@ -135,6 +135,14 @@ func TestMessageType(p *GossipPacket) bool {
 	return true
 }
 
+// GetACKIdentifier : return the string corresponding to the ACK identifier of
+// the given rumor
+func GetACKIdentifier(rumor *RumorMessage, dest *string) *string {
+	str := strconv.Itoa(int(rumor.ID)) + "@" + rumor.Origin + "@" + *dest
+	return &str
+}
+
+/*
 // RemoveAddrFromPeers : remove the given address from the array of addresses
 func RemoveAddrFromPeers(peers *[]net.UDPAddr, addr *net.UDPAddr) *[]net.UDPAddr {
 
@@ -152,3 +160,4 @@ func RemoveAddrFromPeers(peers *[]net.UDPAddr, addr *net.UDPAddr) *[]net.UDPAddr
 	fmt.Println("Warning: couldn't remove address from peers")
 	return peers
 }
+*/

@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	u "github.com/guillaumemichel/Peerster/utils"
 )
@@ -15,15 +16,17 @@ var bufferSize int = 2048
 
 // Gossiper : a gossiper
 type Gossiper struct {
-	Name       string
-	GossipAddr *net.UDPAddr
-	ClientAddr *net.UDPAddr
-	GossipConn *net.UDPConn
-	ClientConn *net.UDPConn
-	Peers      []net.UDPAddr
-	BufSize    int
-	Mode       string
-	RumorCount uint32
+	Name        string
+	GossipAddr  *net.UDPAddr
+	ClientAddr  *net.UDPAddr
+	GossipConn  *net.UDPConn
+	ClientConn  *net.UDPConn
+	Peers       []net.UDPAddr
+	BufSize     int
+	Mode        string
+	RumorCount  uint32
+	PendingACKs *map[string]chan bool
+	WantList    *[]u.PeerStatus
 }
 
 // ErrorCheck : check for non critical error, and logs the result
@@ -71,17 +74,22 @@ func NewGossiper(address, name, UIPort, peerList *string,
 	} else {
 		mode = u.RumorModeStr
 	}
+	acks := make(map[string]chan bool)
+
+	status := []u.PeerStatus{u.PeerStatus{Identifier: *name, NextID: 1}}
 
 	return &Gossiper{
-		Name:       *name,
-		GossipAddr: gossAddr,
-		ClientAddr: cliAddr,
-		GossipConn: gossConn,
-		ClientConn: cliConn,
-		Peers:      *peers,
-		BufSize:    bufferSize,
-		Mode:       mode,
-		RumorCount: 0,
+		Name:        *name,
+		GossipAddr:  gossAddr,
+		ClientAddr:  cliAddr,
+		GossipConn:  gossConn,
+		ClientConn:  cliConn,
+		Peers:       *peers,
+		BufSize:     bufferSize,
+		Mode:        mode,
+		RumorCount:  0,
+		PendingACKs: &acks,
+		WantList:    &status,
 	}
 }
 
@@ -136,6 +144,16 @@ func (g *Gossiper) PrintStatusMessage(msg *u.StatusPacket, from *string) {
 	g.PrintPeers()
 }
 
+// PrintFlippedCoin : prints flipped coin message
+func (g *Gossiper) PrintFlippedCoin(addr *string) {
+	fmt.Printf("FLIPPED COIN sending rumor to %s\n", *addr)
+}
+
+// PrintInSync : prints in sync message
+func (g *Gossiper) PrintInSync(addr *string) {
+	fmt.Printf("IN SYNC WITH %s\n", *addr)
+}
+
 // CreateSimpleMessage : creates a gossip simple message from a string
 func (g *Gossiper) CreateSimpleMessage(name, content *string) *u.SimpleMessage {
 	return &u.SimpleMessage{
@@ -184,21 +202,51 @@ func (g *Gossiper) Broadcast(packet []byte, sender *net.UDPAddr) {
 	}
 }
 
-// SendToRandomPeer : sends the given packet to a random peer
-func (g *Gossiper) SendToRandomPeer(packet []byte, peers *[]net.UDPAddr) {
-	// get a random host to send the message
-	r := u.GetRealRand(len(*peers)) // GetRand(n) also possible
-	g.GossipConn.WriteToUDP(packet, &(*peers)[r])
-}
-
 // ReceiveOK : return false if message too long to be handled, true otherwise
 func (g *Gossiper) ReceiveOK(ok bool, rcvBytes []byte) bool {
 	if !ok && len(rcvBytes) >= g.BufSize {
 		log.Printf(`Warning: incoming message possibly larger than %d bytes 
-			couldn't be read!`, g.BufSize)
+			couldn't be read!\n`, g.BufSize)
 		return false
 	}
 	return true
+}
+
+// SendRumor : sends a rumor with all specifications to a random peer
+func (g *Gossiper) SendRumor(packet *[]byte, rumor *u.RumorMessage) {
+
+	// get a random host to send the message
+	r := u.GetRealRand(len(g.Peers)) // GetRand(n) also possible
+	target := (g.Peers)[r]
+	targetStr := target.String()
+
+	// create a unique identifier for the message
+	pendingACKStr := u.GetACKIdentifier(rumor, &targetStr)
+	// associate a channel with unique message identifier in Gossiper
+	(*g.PendingACKs)[*pendingACKStr] = make(chan bool)
+
+	fmt.Printf("MONGERING with %s\n", targetStr)
+	// send packet
+	g.GossipConn.WriteToUDP(*packet, &target)
+
+	// creates the timeout
+	timeout := make(chan bool)
+	go func() {
+		// timeout value defined in utils/constants.go
+		time.Sleep(time.Duration(u.TimeoutValue) * time.Second)
+		timeout <- true
+	}()
+
+	select {
+	case <-timeout: // TIMEOUT
+		delete((*g.PendingACKs), *pendingACKStr)
+		g.SendRumor(packet, rumor)
+		return
+	case <-(*g.PendingACKs)[*pendingACKStr]: // ACK
+		delete((*g.PendingACKs), *pendingACKStr)
+		return
+	}
+
 }
 
 // DealWithStatus : deals with status messages
@@ -227,21 +275,12 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 					packet := u.ProtobufGossip(&u.GossipPacket{Simple: sm})
 					// broadcast it, except to sender
 					g.Broadcast(packet, udpAddr)
+
 				} else if rcvMsg.Rumor != nil { // RumorMessage received
-					// RumorMessage converted to SimpleMessage
-					m := rcvMsg.Rumor
 					// prints message to console
-					g.PrintRumorMessage(m, &addrStr)
+					g.PrintRumorMessage(rcvMsg.Rumor, &addrStr)
 					fmt.Println("Warning: gossiper running in Simple mode",
 						"and received a RumorMessage, discarding it")
-
-					/*
-						// replace the RumorMessage by a SimpleMessage
-						sm := g.CreateSimpleMessage(&m.Origin, &m.Text)
-						// protobuf the new message
-						packet := u.ProtobufGossip(&u.GossipPacket{Simple: sm})
-						// broadcast it, except to sender
-						g.Broadcast(packet, udpAddr)*/
 
 				} else { // StatusMessage received
 					m := rcvMsg.Status
@@ -253,20 +292,17 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 
 			} else if g.Mode == u.RumorModeStr {
 				if rcvMsg.Simple != nil { // SimpleMessage received
-					sm := rcvMsg.Simple
 					// prints message to console
-					g.PrintSimpleMessage(sm, &addrStr)
+					g.PrintSimpleMessage(rcvMsg.Simple, &addrStr)
 					fmt.Println("Warning: gossiper running in Rumor mode",
 						"and received a SimpleMessage, discarding it")
+
 				} else if rcvMsg.Rumor != nil { // RumorMessage received
-					// RumorMessage converted to SimpleMessage
-					m := rcvMsg.Rumor
 					// prints message to console
-					g.PrintRumorMessage(m, &addrStr)
-					// send it to a random peer, but not the sender
-					possiblePeers := u.RemoveAddrFromPeers(&g.Peers, udpAddr)
+					g.PrintRumorMessage(rcvMsg.Rumor, &addrStr)
 					// as the message doesn't change, we send rcvBytes
-					g.SendToRandomPeer(rcvBytes, possiblePeers)
+					g.SendRumor(&rcvBytes, rcvMsg.Rumor)
+
 				} else { // StatusMessage received
 					m := rcvMsg.Status
 					// prints message to console
@@ -293,12 +329,12 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 				g.Broadcast(packet, nil)
 			} else { // rumor mode
 				// creates a RumorMessage in GossipPacket to be broadcasted
-				gPacket := u.GossipPacket{Rumor: g.CreateRumorMessage(
-					&g.Name, &m)}
+				rumor := g.CreateRumorMessage(&g.Name, &m)
+				gPacket := u.GossipPacket{Rumor: rumor}
 				// protobuf the message
 				packet := u.ProtobufGossip(&gPacket)
 				// sends the packet to a random peer
-				g.SendToRandomPeer(packet, &g.Peers)
+				g.SendRumor(&packet, rumor)
 			}
 		}
 	}
