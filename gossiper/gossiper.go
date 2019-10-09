@@ -213,6 +213,7 @@ func (g *Gossiper) WriteRumorToHistory(rumor *u.RumorMessage) {
 		u.HistoryMessage{ID: rumor.ID, Text: rumor.Text})
 
 	// update status
+	// TODO
 }
 
 // Broadcast : Sends a message to all known gossipers
@@ -259,6 +260,7 @@ func (g *Gossiper) SendRumor(packet *[]byte, rumor *u.RumorMessage) {
 		timeout <- true
 	}()
 
+	// TODO check this
 	select {
 	case <-timeout: // TIMEOUT
 		delete(g.PendingACKs, *pendingACKStr)
@@ -296,6 +298,8 @@ func (g *Gossiper) DealWithStatus(status *u.StatusPacket, sender *string) {
 	// else if g is late, sends status for update
 
 	// print sync message, 1/2 chance to send first packet to new peer
+
+	// TODO this
 }
 
 // HandleMessage : handles a message on arrival
