@@ -473,19 +473,11 @@ func (g *Gossiper) DealWithStatus(status *u.StatusPacket, sender *string,
 	g.PrintInSync(&addrStr)
 	// if ack message and 50% chance
 	if ack && u.GetRealRand(2) == 0 {
-		initialMessage
+		// recover the initial message to send to a random peer
+		rumor := g.RecoverHistoryRumor(&initialMessage)
+
+		g.SendRumorToRandom(nil, rumor, &initialMessage)
 	}
-
-	// add new Origins (if any) to status
-	// compare own status with received one (together with above)
-
-	// if peer need packets -> send one to it
-
-	// else if g is late, sends status for update
-
-	// print sync message, 1/2 chance to send first packet to new peer
-
-	// TODO this
 }
 
 // HandleMessage : handles a message on arrival
