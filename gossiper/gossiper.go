@@ -268,9 +268,8 @@ func (g *Gossiper) ReceiveOK(ok bool, rcvBytes []byte) bool {
 	return true
 }
 
-// HistoryMessageToByte : recover a rumor message from history, protobuf it
-// and sends back an array of bytes
-func (g *Gossiper) HistoryMessageToByte(ref *u.MessageReference) *[]byte {
+// RecoverHistoryRumor : recover a message from rumor history
+func (g *Gossiper) RecoverHistoryRumor(ref *u.MessageReference) *u.RumorMessage {
 	// if ID ref is larger than array size or message not in array
 	if len(g.RumorHistory[ref.Origin]) < int(ref.ID) ||
 		g.RumorHistory[ref.Origin][ref.ID].ID != ref.ID {
@@ -284,14 +283,28 @@ func (g *Gossiper) HistoryMessageToByte(ref *u.MessageReference) *[]byte {
 		ID:     ref.ID,
 		Text:   g.RumorHistory[ref.Origin][ref.ID].Text,
 	}
+	return &rumor
+}
+
+// HistoryMessageToByte : recover a rumor message from history, protobuf it
+// and sends back an array of bytes
+func (g *Gossiper) HistoryMessageToByte(ref *u.MessageReference) *[]byte {
+	rumor := g.RecoverHistoryRumor(ref)
 	// protobuf the rumor to get a byte array
-	packet := u.ProtobufGossip(&u.GossipPacket{Rumor: &rumor})
+	packet := u.ProtobufGossip(&u.GossipPacket{Rumor: rumor})
 	return &packet
 }
 
 // SendRumor : send rumor to the given peer, deals with timeouts and all
 func (g *Gossiper) SendRumor(packet *[]byte, rumor *u.RumorMessage,
 	addr *net.UDPAddr, initial *u.MessageReference) {
+
+	// protobuf the message
+	if packet == nil {
+		gPacket := u.GossipPacket{Rumor: rumor}
+		p := u.ProtobufGossip(&gPacket)
+		packet = &p
+	}
 
 	targetStr := (*addr).String()
 	// initialize the initial message if it is nil
@@ -341,6 +354,23 @@ func (g *Gossiper) SendRumor(packet *[]byte, rumor *u.RumorMessage,
 	}
 }
 
+// BuildStatusPacket : build a status packet for g
+func (g *Gossiper) BuildStatusPacket() *u.StatusPacket {
+	var want []u.PeerStatus
+	for k, v := range g.WantList {
+		want = append(want, u.PeerStatus{Identifier: k, NextID: v})
+	}
+	sp := u.StatusPacket{Want: want}
+	return &sp
+}
+
+// SendStatus : send status/ack to given peer
+func (g *Gossiper) SendStatus(dst *net.UDPAddr) {
+	gossip := u.GossipPacket{Status: g.BuildStatusPacket()}
+	packet := u.ProtobufGossip(&gossip)
+	g.GossipConn.WriteToUDP(packet, dst)
+}
+
 // SendRumorToRandom : sends a rumor with all specifications to a random peer
 func (g *Gossiper) SendRumorToRandom(packet *[]byte,
 	rumor *u.RumorMessage, initial *u.MessageReference) {
@@ -352,66 +382,98 @@ func (g *Gossiper) SendRumorToRandom(packet *[]byte,
 	g.SendRumor(packet, rumor, &target, initial)
 }
 
+/*
 // SendStoredMessage : send a stored message to the given peer
 func (g *Gossiper) SendStoredMessage(origin *string, id uint32,
-	udpAddr net.UDPAddr) {
+	udpAddr *net.UDPAddr) {
 
 	gossip := u.GossipPacket{Rumor: &u.RumorMessage{
 		Origin: *origin,
 		ID:     id,
 		Text:   g.RumorHistory[*origin][id-1].Text, // -1 ids start at 1
 	}}
-	fmt.Println(gossip)
-	//packet := u.ProtobufGossip(&gossip)
-	// TODO send packet
+
+	packet := u.ProtobufGossip(&gossip)
+	g.GossipConn.WriteToUDP(packet, udpAddr)
+	//timout
 }
+*/
 
 // DealWithStatus : deals with status messages
-func (g *Gossiper) DealWithStatus(status *u.StatusPacket, sender *string) {
+func (g *Gossiper) DealWithStatus(status *u.StatusPacket, sender *string,
+	addr *net.UDPAddr) {
 
 	var initialMessage u.MessageReference
+	addrStr := (*addr).String()
+
+	// is the status an acknowledgement packet ?
+	ack := false
 
 	// associate this ack with a pending one if any
 	// needs to be done fast, so there will be a second similar loop with non-
 	// critical operations
 	for _, v := range status.Want {
 		// get the string which identifies the pending ACK
-		pendingACKStr := u.GetACKIdentifierReceive(v.NextID,
+		pendingACKId := u.GetACKIdentifierReceive(v.NextID,
 			&v.Identifier, sender)
-		// check if the ACK is pending
-		if _, ok := g.PendingACKs[*pendingACKStr]; ok { // pending ACK found
-			// write to the corresponding channel to stop timer in rumor message
 
-			// TODO : check ack newer than sent packet
-			g.PendingACKs[*pendingACKStr].Channel <- true
-			initialMessage = *g.PendingACKs[*pendingACKStr].InitialMessage
-			break
+		// acknowledge rumor with ID lower than the ack we just recieved
+		for i := v.NextID; i > 0; i-- {
+			// we look for an ID lower than v.NextID
+			identifier := u.AckIdentifier{
+				Peer:   *sender,
+				Origin: v.Identifier,
+				ID:     i,
+			}
+			// if it is pending, we acknowledge it by writing to the channel
+			if _, ok := g.PendingACKs[identifier]; ok {
+				// write to the corresponding channel to stop timer in
+				//rumor message
+
+				g.PendingACKs[*pendingACKId].Channel <- true
+				// set the initial message to the first message acked
+				initialMessage = *g.PendingACKs[*pendingACKId].InitialMessage
+				ack = true
+			}
 		}
 	}
-
-	// g and peer synchronized ?
-	sync := true
 
 	//check if peer wants packets that g have, and send them if any
-	for _, v := range status.Want {
-		if v.NextID < g.WantList[v.Identifier] {
-
-		}
-	}
-
-	// check if g is late on peer, and request messages if true
 	for _, v := range status.Want {
 		// if origin no in want list, add it
 		if _, ok := g.WantList[v.Identifier]; !ok {
 			g.WantList[v.Identifier] = 1
 		}
-		if v.NextID > g.WantList[v.Identifier] {
-			// request message
+
+		// if v.NextID is lower than the message we want, then we have stored
+		// the message that is wanted, so we send it to peer and return
+		if v.NextID < g.WantList[v.Identifier] {
+			// reference of the message to recover from history
+			ref := u.MessageReference{Origin: v.Identifier, ID: v.NextID}
+			// rumor to send
+			rumor := g.RecoverHistoryRumor(&ref)
+			g.SendRumor(nil, rumor, addr, &initialMessage)
+			return
 		}
 	}
 
-	if sync {
-		fmt.Println(initialMessage)
+	// check if g is late on peer, and request messages if true
+	for _, v := range status.Want {
+		// if nextID > a message we want, request it
+		if v.NextID > g.WantList[v.Identifier] {
+			// send status to request it
+			g.SendStatus(addr)
+			return
+		}
+	}
+
+	// if we arrive here, then we are sync with peer
+
+	// print in sync message
+	g.PrintInSync(&addrStr)
+	// if ack message and 50% chance
+	if ack && u.GetRealRand(2) == 0 {
+		initialMessage
 	}
 
 	// add new Origins (if any) to status
@@ -462,7 +524,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 						"and received a StatusPacket, discarding it")
 				}
 
-			} else if g.Mode == u.RumorModeStr {
+			} else if g.Mode == u.RumorModeStr { // rumor mode
 				if rcvMsg.Simple != nil { // SimpleMessage received
 					// prints message to console
 					g.PrintSimpleMessage(rcvMsg.Simple, &addrStr)
@@ -477,11 +539,13 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 					g.SendRumorToRandom(&rcvBytes, rumor, nil)
 					g.WriteRumorToHistory(rumor)
 
+					// TODO send ACK
+
 				} else { // StatusMessage received
 					m := rcvMsg.Status
 					// prints message to console
 					g.PrintStatusMessage(m, &addrStr)
-					g.DealWithStatus(m, &addrStr)
+					g.DealWithStatus(m, &addrStr, udpAddr)
 				}
 			}
 		}
