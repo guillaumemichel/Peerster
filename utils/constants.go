@@ -8,3 +8,6 @@ const RumorModeStr string = "rumor"
 
 // TimeoutValue : timeout value in seconds
 const TimeoutValue int = 10
+
+// AntiEntropyDefault : default value in seconds for anti entropy
+const AntiEntropyDefault int = 10

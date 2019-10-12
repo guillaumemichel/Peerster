@@ -6,6 +6,7 @@ import (
 	"os"
 
 	g "github.com/guillaumemichel/Peerster/gossiper"
+	u "github.com/guillaumemichel/Peerster/utils"
 )
 
 func main() {
@@ -18,6 +19,8 @@ func main() {
 		"comma separated list of peers of the form ip:port")
 	simple := flag.Bool("simple", false,
 		"run gossiper in simple broadcast mode")
+	antiE := flag.Int("antiEntropy", u.AntiEntropyDefault,
+		"anti entropy value in seconds")
 	//bufferSize := flag.Int("buffer-size", 1024, "buffer size of the udp socket")
 
 	flag.Parse()
@@ -26,5 +29,5 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	g.StartNewGossiper(gossipAddr, name, UIPort, peersInput)
+	g.StartNewGossiper(gossipAddr, name, UIPort, peersInput, *simple, *antiE)
 }

@@ -30,6 +30,7 @@ type Gossiper struct {
 	PendingACKs  map[u.AckIdentifier]u.AckValues
 	WantList     map[string]uint32
 	RumorHistory map[string][]u.HistoryMessage
+	AntiEntropy  int
 }
 
 // ErrorCheck : check for non critical error, and logs the result
@@ -48,7 +49,7 @@ func PanicCheck(err error) {
 
 // NewGossiper : creates a new gossiper with the given parameters
 func NewGossiper(address, name, UIPort, peerList *string,
-	simple bool) *Gossiper {
+	simple bool, antiE int) *Gossiper {
 
 	// define gossip address and connection for the new gossiper
 	gossAddr, err := net.ResolveUDPAddr("udp4", *address)
@@ -96,6 +97,7 @@ func NewGossiper(address, name, UIPort, peerList *string,
 		PendingACKs:  acks,
 		WantList:     status,
 		RumorHistory: history,
+		AntiEntropy:  antiE,
 	}
 }
 
@@ -345,7 +347,7 @@ func (g *Gossiper) SendRumor(packet *[]byte, rumor *u.RumorMessage,
 		// send the initial packet to a random peer
 		packet := g.HistoryMessageToByte(initial)
 		if packet != nil {
-			g.SendRumorToRandom(packet, rumor, initial)
+			g.SendRumorToRandom(packet, rumor, initial, false)
 		}
 		return
 	case <-g.PendingACKs[*pendingACKStr].Channel: // ACK
@@ -373,13 +375,16 @@ func (g *Gossiper) SendStatus(dst *net.UDPAddr) {
 
 // SendRumorToRandom : sends a rumor with all specifications to a random peer
 func (g *Gossiper) SendRumorToRandom(packet *[]byte,
-	rumor *u.RumorMessage, initial *u.MessageReference) {
+	rumor *u.RumorMessage, initial *u.MessageReference, coin bool) {
 
 	// get a random host to send the message
-	r := u.GetRealRand(len(g.Peers)) // GetRand(n) also possible
-	target := (g.Peers)[r]
+	target := g.GetRandPeer()
+	if coin {
+		targetStr := (*target).String()
+		g.PrintFlippedCoin(&targetStr)
+	}
 
-	g.SendRumor(packet, rumor, &target, initial)
+	g.SendRumor(packet, rumor, target, initial)
 }
 
 /*
@@ -476,7 +481,7 @@ func (g *Gossiper) DealWithStatus(status *u.StatusPacket, sender *string,
 		// recover the initial message to send to a random peer
 		rumor := g.RecoverHistoryRumor(&initialMessage)
 
-		g.SendRumorToRandom(nil, rumor, &initialMessage)
+		g.SendRumorToRandom(nil, rumor, &initialMessage, true)
 	}
 }
 
@@ -528,7 +533,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 					// prints message to console
 					g.PrintRumorMessage(rumor, &addrStr)
 					// as the message doesn't change, we send rcvBytes
-					g.SendRumorToRandom(&rcvBytes, rumor, nil)
+					g.SendRumorToRandom(&rcvBytes, rumor, nil, false)
 					g.WriteRumorToHistory(rumor)
 
 					// TODO send ACK
@@ -564,7 +569,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 				// protobuf the message
 				packet := u.ProtobufGossip(&gPacket)
 				// sends the packet to a random peer
-				g.SendRumorToRandom(&packet, rumor, nil)
+				g.SendRumorToRandom(&packet, rumor, nil, false)
 				g.WriteRumorToHistory(rumor)
 			}
 		}
@@ -586,6 +591,25 @@ func (g *Gossiper) Listen(udpConn *net.UDPConn) {
 	}
 }
 
+// GetRandPeer : get a random peer known to g
+func (g *Gossiper) GetRandPeer() *net.UDPAddr {
+	r := u.GetRealRand(len(g.Peers)) // GetRand(n) also possible
+	target := (g.Peers)[r]
+	return &target
+}
+
+// DoAntiEntropy : manage anti entropy
+func (g *Gossiper) DoAntiEntropy() {
+	for {
+		// sleep for anti entropy value
+		time.Sleep(time.Duration(g.AntiEntropy) * time.Second)
+
+		// send status to random peer
+		target := g.GetRandPeer()
+		g.SendStatus(target)
+	}
+}
+
 // Run : runs a given gossiper
 func (g *Gossiper) Run() {
 
@@ -594,11 +618,11 @@ func (g *Gossiper) Run() {
 	go g.Listen(g.GossipConn)
 
 	// keep the program active
-	for {
-	}
+	g.DoAntiEntropy()
 }
 
 // StartNewGossiper : Creates and starts a new gossiper
-func StartNewGossiper(address, name, UIPort, peerList *string, simple bool) {
-	NewGossiper(address, name, UIPort, peerList, simple).Run()
+func StartNewGossiper(address, name, UIPort, peerList *string,
+	simple bool, antiE int) {
+	NewGossiper(address, name, UIPort, peerList, simple, antiE).Run()
 }
