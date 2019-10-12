@@ -11,6 +11,8 @@ import (
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
+// TODO: atomicity
+
 // TODO: client can edit bufferSize
 var bufferSize int = 2048
 
@@ -25,7 +27,7 @@ type Gossiper struct {
 	BufSize      int
 	Mode         string
 	RumorCount   uint32
-	PendingACKs  map[string]chan bool
+	PendingACKs  map[u.AckIdentifier]u.AckValues
 	WantList     map[string]uint32
 	RumorHistory map[string][]u.HistoryMessage
 }
@@ -75,7 +77,7 @@ func NewGossiper(address, name, UIPort, peerList *string,
 	} else {
 		mode = u.RumorModeStr
 	}
-	acks := make(map[string]chan bool)
+	acks := make(map[u.AckIdentifier]u.AckValues)
 
 	status := make(map[string]uint32)
 	status[*name] = 1
@@ -199,21 +201,52 @@ func (g *Gossiper) AddPeer(addr *net.UDPAddr) {
 
 // WriteRumorToHistory : write a given message to Gossiper message history
 func (g *Gossiper) WriteRumorToHistory(rumor *u.RumorMessage) {
-	//origin := rumor.Origin
-	//ID := rumor.ID
-	//text := rumor.Text
-	for _, v := range g.RumorHistory[rumor.Origin] {
-		if v.ID == rumor.ID {
+	origin := rumor.Origin
+	ID := rumor.ID
+	text := rumor.Text
+	for _, v := range g.RumorHistory[origin] {
+		if v.ID == ID {
 			// message already written to history
 			return
 		}
 	}
 	// write message to history
-	g.RumorHistory[rumor.Origin] = append(g.RumorHistory[rumor.Origin],
-		u.HistoryMessage{ID: rumor.ID, Text: rumor.Text})
+	if int(ID) < len(g.RumorHistory[origin]) { // packet received not in order
+		// more recent messages have been received, but message missing
 
-	// update status
-	// TODO
+		// fill a missing slot
+		g.RumorHistory[origin][ID-1] = u.HistoryMessage{ID: ID, Text: text}
+
+		found := false
+		for i, v := range g.RumorHistory[origin] {
+			// check for empty slots in message history to define the wantlist
+			if v.ID == 0 {
+				g.WantList[origin] = uint32(i + 1)
+				found = true
+				break
+			}
+		}
+		// if not, the last slot has been filled, set wantlist value to the end
+		// of the history (next value)
+		if !found {
+			g.WantList[origin] = uint32(len(g.RumorHistory[origin]) + 1)
+		}
+	} else if ID == g.WantList[origin] { // the next packet that g doesn't have
+		g.RumorHistory[origin] = append(g.RumorHistory[origin],
+			u.HistoryMessage{ID: ID, Text: text})
+		// update the wantlist to the next message
+		g.WantList[origin]++
+	} else { // not the wanted message, but a newer one
+		// e.g waiting for message 2, and get message 4
+		for i := g.WantList[origin]; i < ID; i++ {
+			// create empty slots for missing message
+			g.RumorHistory[origin] = append(g.RumorHistory[origin],
+				u.HistoryMessage{ID: 0, Text: ""})
+		}
+		g.RumorHistory[origin] = append(g.RumorHistory[origin],
+			u.HistoryMessage{ID: ID, Text: text})
+		// don't update the wantlist, as wanted message still missing
+	}
 }
 
 // Broadcast : Sends a message to all known gossipers
@@ -235,22 +268,54 @@ func (g *Gossiper) ReceiveOK(ok bool, rcvBytes []byte) bool {
 	return true
 }
 
-// SendRumor : sends a rumor with all specifications to a random peer
-func (g *Gossiper) SendRumor(packet *[]byte, rumor *u.RumorMessage) {
+// HistoryMessageToByte : recover a rumor message from history, protobuf it
+// and sends back an array of bytes
+func (g *Gossiper) HistoryMessageToByte(ref *u.MessageReference) *[]byte {
+	// if ID ref is larger than array size or message not in array
+	if len(g.RumorHistory[ref.Origin]) < int(ref.ID) ||
+		g.RumorHistory[ref.Origin][ref.ID].ID != ref.ID {
 
-	// get a random host to send the message
-	r := u.GetRealRand(len(g.Peers)) // GetRand(n) also possible
-	target := (g.Peers)[r]
-	targetStr := target.String()
+		log.Println("Error: message queried and not found in history!")
+		return nil
+	}
+	// recover the text in history to create the rumor
+	rumor := u.RumorMessage{
+		Origin: ref.Origin,
+		ID:     ref.ID,
+		Text:   g.RumorHistory[ref.Origin][ref.ID].Text,
+	}
+	// protobuf the rumor to get a byte array
+	packet := u.ProtobufGossip(&u.GossipPacket{Rumor: &rumor})
+	return &packet
+}
+
+// SendRumor : send rumor to the given peer, deals with timeouts and all
+func (g *Gossiper) SendRumor(packet *[]byte, rumor *u.RumorMessage,
+	addr *net.UDPAddr, initial *u.MessageReference) {
+
+	targetStr := (*addr).String()
+	// initialize the initial message if it is nil
+	if initial == nil {
+		ref := u.MessageReference{
+			Origin: rumor.Origin,
+			ID:     rumor.ID,
+		}
+		initial = &ref
+	}
 
 	// create a unique identifier for the message
 	pendingACKStr := u.GetACKIdentifierSend(rumor, &targetStr)
-	// associate a channel with unique message identifier in Gossiper
-	g.PendingACKs[*pendingACKStr] = make(chan bool)
+
+	// associate a channel and initial message with unique message identifier
+	// in Gossiper
+	g.PendingACKs[*pendingACKStr] = u.AckValues{
+		Channel:        make(chan bool),
+		InitialMessage: initial,
+	}
 
 	fmt.Printf("MONGERING with %s\n", targetStr)
 	// send packet
-	g.GossipConn.WriteToUDP(*packet, &target)
+	g.GossipConn.WriteToUDP(*packet, addr)
 
 	// creates the timeout
 	timeout := make(chan bool)
@@ -264,30 +329,89 @@ func (g *Gossiper) SendRumor(packet *[]byte, rumor *u.RumorMessage) {
 	select {
 	case <-timeout: // TIMEOUT
 		delete(g.PendingACKs, *pendingACKStr)
-		g.SendRumor(packet, rumor)
+		// send the initial packet to a random peer
+		packet := g.HistoryMessageToByte(initial)
+		if packet != nil {
+			g.SendRumorToRandom(packet, rumor, initial)
+		}
 		return
-	case <-g.PendingACKs[*pendingACKStr]: // ACK
+	case <-g.PendingACKs[*pendingACKStr].Channel: // ACK
 		delete(g.PendingACKs, *pendingACKStr)
 		return
 	}
+}
 
+// SendRumorToRandom : sends a rumor with all specifications to a random peer
+func (g *Gossiper) SendRumorToRandom(packet *[]byte,
+	rumor *u.RumorMessage, initial *u.MessageReference) {
+
+	// get a random host to send the message
+	r := u.GetRealRand(len(g.Peers)) // GetRand(n) also possible
+	target := (g.Peers)[r]
+
+	g.SendRumor(packet, rumor, &target, initial)
+}
+
+// SendStoredMessage : send a stored message to the given peer
+func (g *Gossiper) SendStoredMessage(origin *string, id uint32,
+	udpAddr net.UDPAddr) {
+
+	gossip := u.GossipPacket{Rumor: &u.RumorMessage{
+		Origin: *origin,
+		ID:     id,
+		Text:   g.RumorHistory[*origin][id-1].Text, // -1 ids start at 1
+	}}
+	fmt.Println(gossip)
+	//packet := u.ProtobufGossip(&gossip)
+	// TODO send packet
 }
 
 // DealWithStatus : deals with status messages
 func (g *Gossiper) DealWithStatus(status *u.StatusPacket, sender *string) {
 
+	var initialMessage u.MessageReference
+
 	// associate this ack with a pending one if any
+	// needs to be done fast, so there will be a second similar loop with non-
+	// critical operations
 	for _, v := range status.Want {
-		nextIDStr := strconv.Itoa(int(v.NextID))
 		// get the string which identifies the pending ACK
-		pendingACKStr := u.GetACKIdentifierReceive(&nextIDStr,
+		pendingACKStr := u.GetACKIdentifierReceive(v.NextID,
 			&v.Identifier, sender)
 		// check if the ACK is pending
 		if _, ok := g.PendingACKs[*pendingACKStr]; ok { // pending ACK found
 			// write to the corresponding channel to stop timer in rumor message
-			g.PendingACKs[*pendingACKStr] <- true
+
+			// TODO : check ack newer than sent packet
+			g.PendingACKs[*pendingACKStr].Channel <- true
+			initialMessage = *g.PendingACKs[*pendingACKStr].InitialMessage
 			break
 		}
+	}
+
+	// g and peer synchronized ?
+	sync := true
+
+	//check if peer wants packets that g have, and send them if any
+	for _, v := range status.Want {
+		if v.NextID < g.WantList[v.Identifier] {
+
+		}
+	}
+
+	// check if g is late on peer, and request messages if true
+	for _, v := range status.Want {
+		// if origin no in want list, add it
+		if _, ok := g.WantList[v.Identifier]; !ok {
+			g.WantList[v.Identifier] = 1
+		}
+		if v.NextID > g.WantList[v.Identifier] {
+			// request message
+		}
+	}
+
+	if sync {
+		fmt.Println(initialMessage)
 	}
 
 	// add new Origins (if any) to status
@@ -350,7 +474,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 					// prints message to console
 					g.PrintRumorMessage(rumor, &addrStr)
 					// as the message doesn't change, we send rcvBytes
-					g.SendRumor(&rcvBytes, rumor)
+					g.SendRumorToRandom(&rcvBytes, rumor, nil)
 					g.WriteRumorToHistory(rumor)
 
 				} else { // StatusMessage received
@@ -384,7 +508,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr,
 				// protobuf the message
 				packet := u.ProtobufGossip(&gPacket)
 				// sends the packet to a random peer
-				g.SendRumor(&packet, rumor)
+				g.SendRumorToRandom(&packet, rumor, nil)
 				g.WriteRumorToHistory(rumor)
 			}
 		}

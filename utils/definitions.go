@@ -47,3 +47,22 @@ type HistoryMessage struct {
 	ID   uint32
 	Text string
 }
+
+// MessageReference : reference to a message stored in history
+type MessageReference struct {
+	Origin string
+	ID     uint32
+}
+
+// AckIdentifier : Ack/status identifier for a sent message
+type AckIdentifier struct {
+	Peer   string
+	Origin string
+	ID     uint32
+}
+
+// AckValues : values pointed by an AckIdentifier
+type AckValues struct {
+	Channel        chan bool
+	InitialMessage *MessageReference
+}
