@@ -155,8 +155,8 @@ func (g *Gossiper) PrintStatusMessage(msg *u.StatusPacket, from *string) {
 }
 
 // PrintFlippedCoin : prints flipped coin message
-func (g *Gossiper) PrintFlippedCoin(addr *string) {
-	fmt.Printf("FLIPPED COIN sending rumor to %s\n", *addr)
+func (g *Gossiper) PrintFlippedCoin(addr string) {
+	fmt.Printf("FLIPPED COIN sending rumor to %s\n", addr)
 }
 
 // PrintInSync : prints in sync message
@@ -213,6 +213,8 @@ func (g *Gossiper) WriteRumorToHistory(rumor *u.RumorMessage) bool {
 	if originHistory, ok := g.RumorHistory.Load(origin); !ok {
 		var empty []u.HistoryMessage
 		g.RumorHistory.Store(origin, empty)
+		fmt.Printf("DEBUG: fake potential identifier2 '%s'\n", origin)
+
 		g.WantList.Store(origin, uint32(1))
 	} else {
 		for _, v := range originHistory.([]u.HistoryMessage) {
@@ -298,16 +300,18 @@ func (g *Gossiper) ReceiveOK(ok bool, rcvBytes []byte) bool {
 }
 
 // RecoverHistoryRumor : recover a message from rumor history
-func (g *Gossiper) RecoverHistoryRumor(ref u.MessageReference) u.RumorMessage {
+func (g *Gossiper) RecoverHistoryRumor(ref u.MessageReference) (u.RumorMessage, bool) {
 
 	oH, ok := g.RumorHistory.Load(ref.Origin)
+	fmt.Println("DEBUG: origin", ref.Origin)
 	//fmt.Printf("DEBUG: history size: %d, query: %d\n",len(originHistory), ref.ID)
 	// if ID ref is larger than array size or message not in array
-	if ok || len(oH.([]u.HistoryMessage)) < int(ref.ID) ||
+	if !ok || len(oH.([]u.HistoryMessage)) < int(ref.ID) ||
 		oH.([]u.HistoryMessage)[ref.ID-1].ID != ref.ID {
 
 		log.Println("Error: message queried and not found in history!")
-		return u.RumorMessage{}
+		log.Println(ref.Origin, " : ", ref.ID, " : ", len(oH.([]u.HistoryMessage)))
+		return u.RumorMessage{}, false
 	}
 
 	// recover the text in history to create the rumor
@@ -316,21 +320,26 @@ func (g *Gossiper) RecoverHistoryRumor(ref u.MessageReference) u.RumorMessage {
 		ID:     ref.ID,
 		Text:   oH.([]u.HistoryMessage)[ref.ID-1].Text,
 	}
-	return rumor
+	return rumor, true
 }
 
 // HistoryMessageToByte : recover a rumor message from history, protobuf it
 // and sends back an array of bytes
-func (g *Gossiper) HistoryMessageToByte(ref u.MessageReference) []byte {
-	rumor := g.RecoverHistoryRumor(ref)
+func (g *Gossiper) HistoryMessageToByte(ref u.MessageReference) ([]byte, bool) {
+	rumor, ok := g.RecoverHistoryRumor(ref)
 	// protobuf the rumor to get a byte array
 	packet := u.ProtobufGossip(&u.GossipPacket{Rumor: &rumor})
-	return packet
+	return packet, ok
 }
 
 // SendRumor : send rumor to the given peer, deals with timeouts and all
 func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 	addr net.UDPAddr, initial u.MessageReference) {
+
+	if initial.Origin == "" || initial.ID < 1 {
+		fmt.Println("Error: missing initial message in SendRumor")
+		return
+	}
 
 	// protobuf the message
 	if len(packet) == 0 {
@@ -346,6 +355,7 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 
 	// associate a channel and initial message with unique message identifier
 	// in Gossiper
+	fmt.Println("DEBUG: initial: ", initial)
 	values := u.AckValues{
 		Channel:        make(chan bool),
 		InitialMessage: initial,
@@ -370,8 +380,8 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 	case <-timeout: // TIMEOUT
 		g.PendingACKs.Delete(*pendingACKStr)
 		// send the initial packet to a random peer
-		packet := g.HistoryMessageToByte(initial)
-		if packet != nil {
+		packet, ok := g.HistoryMessageToByte(initial)
+		if ok {
 			g.SendRumorToRandom(packet, rumor, initial, false)
 		}
 		return
@@ -383,6 +393,7 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 
 // BuildStatusPacket : build a status packet for g
 func (g *Gossiper) BuildStatusPacket() *u.StatusPacket {
+
 	var want []u.PeerStatus
 
 	f := func(k, v interface{}) bool {
@@ -399,7 +410,7 @@ func (g *Gossiper) BuildStatusPacket() *u.StatusPacket {
 // SendStatus : send status/ack to given peer
 func (g *Gossiper) SendStatus(dst *net.UDPAddr) {
 	// DEBUG
-	// PrintWantlist(g)
+	//u.PrintWantlist(g)
 
 	gossip := u.GossipPacket{Status: g.BuildStatusPacket()}
 	packet := u.ProtobufGossip(&gossip)
@@ -416,7 +427,7 @@ func (g *Gossiper) SendRumorToRandom(packet []byte,
 	if target != nil {
 		if coin {
 			targetStr := (*target).String()
-			g.PrintFlippedCoin(&targetStr)
+			g.PrintFlippedCoin(targetStr)
 		}
 
 		g.SendRumor(packet, rumor, *target, initial)
@@ -456,8 +467,7 @@ func (g *Gossiper) DealWithStatus(status *u.StatusPacket, sender *string,
 	// critical operations
 	for _, v := range status.Want {
 		// get the string which identifies the pending ACK
-		pendingACKId := u.GetACKIdentifierReceive(v.NextID,
-			&v.Identifier, sender)
+		//pendingACKId := u.GetACKIdentifierReceive(v.NextID, &v.Identifier, sender)
 
 		// acknowledge rumor with ID lower than the ack we just recieved
 		for i := v.NextID; i > 0; i-- {
@@ -473,7 +483,7 @@ func (g *Gossiper) DealWithStatus(status *u.StatusPacket, sender *string,
 				//rumor message
 				v.(u.AckValues).Channel <- true
 				// set the initial message to the first message acked
-				fmt.Println("DEBUG: pending ack id", pendingACKId)
+				//fmt.Println("DEBUG: pending ack id", pendingACKId)
 				initialMessage = v.(u.AckValues).InitialMessage
 				ack = true
 			}
@@ -484,6 +494,7 @@ func (g *Gossiper) DealWithStatus(status *u.StatusPacket, sender *string,
 	for _, v := range status.Want {
 		// if origin no in want list, add it
 		if _, ok := g.WantList.Load(v.Identifier); !ok {
+			fmt.Printf("DEBUG: fake potential identifier '%s'\n", v.Identifier)
 			g.WantList.Store(v.Identifier, uint32(1))
 		}
 
@@ -491,11 +502,20 @@ func (g *Gossiper) DealWithStatus(status *u.StatusPacket, sender *string,
 		// the message that is wanted, so we send it to peer and return
 		wantedID, _ := g.WantList.Load(v.Identifier)
 		if v.NextID < wantedID.(uint32) {
+			fmt.Println("DEBUG: inférieur")
 			// reference of the message to recover from history
 			ref := u.MessageReference{Origin: v.Identifier, ID: v.NextID}
 			// rumor to send
-			rumor := g.RecoverHistoryRumor(ref)
-			g.SendRumor(nil, rumor, *addr, initialMessage)
+			rumor, ok := g.RecoverHistoryRumor(ref)
+			if !ack {
+				initialMessage = u.MessageReference{
+					Origin: rumor.Origin,
+					ID:     rumor.ID,
+				}
+			}
+			if ok {
+				g.SendRumor(nil, rumor, *addr, initialMessage)
+			}
 			return
 		}
 	}
@@ -515,12 +535,28 @@ func (g *Gossiper) DealWithStatus(status *u.StatusPacket, sender *string,
 
 	// print in sync message
 	g.PrintInSync(&addrStr)
+
+	target := g.GetRandPeer()
+	g.PrintFlippedCoin(target.String())
+
 	// if ack message and 50% chance
 	if ack && u.GetRealRand(2) == 0 {
 		// recover the initial message to send to a random peer
-		rumor := g.RecoverHistoryRumor(initialMessage)
+		fmt.Println("DEBUG: initial")
+		// ERROOOOOOOOOOOR
+		rumor, ok := g.RecoverHistoryRumor(initialMessage)
 
-		g.SendRumorToRandom(nil, rumor, initialMessage, true)
+		if ok {
+			// ERROR no nil!!!!!!!!!!!
+			gPacket := u.GossipPacket{Rumor: &rumor}
+
+			// protobuf the message
+			packet := u.ProtobufGossip(&gPacket)
+
+			g.SendRumor(packet, rumor, *target, initialMessage)
+
+			//g.SendRumorToRandom(packet, rumor, initialMessage, true)
+		}
 	}
 }
 
