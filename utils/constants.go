@@ -11,3 +11,6 @@ const TimeoutValue int = 10
 
 // AntiEntropyDefault : default value in seconds for anti entropy
 const AntiEntropyDefault int = 10
+
+// BufferSize : read buffer size in bytes
+const BufferSize int = 2048

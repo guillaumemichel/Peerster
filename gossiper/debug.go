@@ -2,9 +2,24 @@ package gossiper
 
 import (
 	"fmt"
+	"log"
 
 	u "github.com/guillaumemichel/Peerster/utils"
 )
+
+// ErrorCheck : check for non critical error, and logs the result
+func ErrorCheck(err error) {
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+// PanicCheck : check for panic level errors, and logs the result
+func PanicCheck(err error) {
+	if err != nil {
+		log.Panic(err)
+	}
+}
 
 // Debug : print debug message
 func Debug(title, msg string) {
@@ -28,4 +43,15 @@ func DebugStatusPacket(packet *[]byte) {
 		}
 
 	}
+}
+
+// PrintWantlist : prints the wantlist of the Gossiper
+func (g *Gossiper) PrintWantlist() {
+	f := func(k, v interface{}) bool {
+		fmt.Printf("%s : %d\n", k.(string), v.(uint32))
+		return true
+	}
+	fmt.Println("\nDEBUG: Printing wantlist")
+	g.WantList.Range(f)
+	fmt.Println()
 }
