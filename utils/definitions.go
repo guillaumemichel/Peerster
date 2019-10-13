@@ -64,5 +64,5 @@ type AckIdentifier struct {
 // AckValues : values pointed by an AckIdentifier
 type AckValues struct {
 	Channel        chan bool
-	InitialMessage *MessageReference
+	InitialMessage MessageReference
 }

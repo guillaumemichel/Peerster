@@ -9,6 +9,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/DeDiS/protobuf"
 )
@@ -37,21 +38,21 @@ func UnprotobufMessage(packet []byte) (*Message, bool) {
 }
 
 // ProtobufGossip : encapsulates a gossip message using protobuf
-func ProtobufGossip(msg *GossipPacket) *[]byte {
+func ProtobufGossip(msg *GossipPacket) []byte {
 
 	// serializing the packet to send
 	bytesToSend, err := protobuf.Encode(msg)
 	if err != nil {
 		log.Panic("Error: couldn't serialize message")
 	}
-	return &bytesToSend
+	return bytesToSend
 }
 
 // UnprotobufGossip : decapsulate a gossip message using protobuf
-func UnprotobufGossip(packet *[]byte) (*GossipPacket, bool) {
+func UnprotobufGossip(packet []byte) (*GossipPacket, bool) {
 	rcvMsg := GossipPacket{}
 
-	err := protobuf.Decode(*packet, &rcvMsg)
+	err := protobuf.Decode(packet, &rcvMsg)
 	ok := true
 	if err != nil {
 		log.Println(err)
@@ -156,6 +157,17 @@ func GetACKIdentifierReceive(nextID uint32, rumorOrigin,
 		ID:     nextID,
 	}
 	return &identifier
+}
+
+// SyncMapCount : count the number of elements in a sync map
+func SyncMapCount(sm *sync.Map) uint32 {
+	count := uint32(0)
+	f := func(k, v interface{}) bool {
+		count++
+		return true
+	}
+	sm.Range(f)
+	return count
 }
 
 /*
