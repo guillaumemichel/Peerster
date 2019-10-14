@@ -25,6 +25,7 @@ type Gossiper struct {
 	WantList     *sync.Map // map[string]uint32
 	RumorHistory *sync.Map // map[string][]u.HistoryMessage
 	AntiEntropy  int
+	NewMessages  *u.SyncNewMessages
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
@@ -62,6 +63,9 @@ func NewGossiper(address, name, UIPort, peerList *string,
 	var history sync.Map
 	var status sync.Map
 
+	var newMessages []u.RumorMessage
+	nm := u.SyncNewMessages{Messages: newMessages}
+
 	status.Store(*name, uint32(1))
 
 	return &Gossiper{
@@ -78,6 +82,7 @@ func NewGossiper(address, name, UIPort, peerList *string,
 		WantList:     &status,
 		RumorHistory: &history,
 		AntiEntropy:  antiE,
+		NewMessages:  &nm,
 	}
 }
 
@@ -124,6 +129,7 @@ func (g *Gossiper) DoAntiEntropy() {
 
 // Run : runs a given gossiper
 func (g *Gossiper) Run() {
+	go g.StartServer()
 
 	// starts a listener on ui and gossip ports
 	go g.Listen(g.ClientConn)

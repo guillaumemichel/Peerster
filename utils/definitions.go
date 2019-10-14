@@ -1,5 +1,7 @@
 package utils
 
+import "sync"
+
 // Message : simple message type that client send to gossiper
 type Message struct {
 	Text string
@@ -65,4 +67,10 @@ type AckIdentifier struct {
 type AckValues struct {
 	Channel        chan bool
 	InitialMessage MessageReference
+}
+
+// SyncNewMessages : sync slice of rumor messages
+type SyncNewMessages struct {
+	sync.Mutex
+	Messages []RumorMessage
 }

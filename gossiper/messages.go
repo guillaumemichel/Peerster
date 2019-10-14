@@ -1,7 +1,10 @@
 package gossiper
 
 import (
+	"fmt"
 	"log"
+	"net"
+	"os"
 
 	u "github.com/guillaumemichel/Peerster/utils"
 )
@@ -52,4 +55,33 @@ func (g *Gossiper) BuildStatusPacket() u.StatusPacket {
 	g.WantList.Range(f)
 	sp := u.StatusPacket{Want: want}
 	return sp
+}
+
+// SendMessage : sends a client message to the gossiper
+func (g *Gossiper) SendMessage(text string) {
+
+	if text == "" {
+		fmt.Println("Error: message required!")
+		os.Exit(1)
+	}
+
+	// creating destination address
+	address := g.ClientAddr
+
+	// creating upd connection
+	udpConn, err := net.DialUDP("udp4", nil, address)
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	packetToSend := u.Message{Text: text}
+
+	// serializing the packet to send
+	bytesToSend := u.ProtobufMessage(&packetToSend)
+
+	// sending the packet over udp
+	_, err = udpConn.Write(bytesToSend)
+	if err != nil {
+		fmt.Println(err)
+	}
 }

@@ -20,6 +20,15 @@ func (g *Gossiper) GetRandPeer() *net.UDPAddr {
 	return &target
 }
 
+// GetPeers : return a list of string all peer addresses
+func (g *Gossiper) GetPeers() []string {
+	var list []string
+	for _, v := range g.Peers {
+		list = append(list, v.String())
+	}
+	return list
+}
+
 // AddPeer : adds the given peer to peers list if not already in it
 func (g *Gossiper) AddPeer(addr *net.UDPAddr) {
 	if !strings.Contains(g.PeersToString(), addr.String()) {
@@ -143,5 +152,31 @@ func (g *Gossiper) WriteRumorToHistory(rumor u.RumorMessage) bool {
 		g.RumorHistory.Store(origin, originHistory)
 		// don't update the wantlist, as wanted message still missing
 	}
+	g.NewMessages.Mutex.Lock()
+	defer g.NewMessages.Mutex.Unlock()
+	g.NewMessages.Messages = append(g.NewMessages.Messages, rumor)
+
 	return true
+}
+
+// GetPeerID : returns the name of the peer
+func (g *Gossiper) GetPeerID() string {
+	return g.Name
+}
+
+// GetNewMessages : return the new unread messages
+func (g *Gossiper) GetNewMessages() []u.RumorMessage {
+	g.NewMessages.Mutex.Lock()
+	defer g.NewMessages.Mutex.Unlock()
+	return g.NewMessages.Messages
+	/*
+			var out []u.RumorMessage
+		// get the new messages to out
+		for _, v := range g.NewMessages.Messages {
+			out = append(out, v)
+		}
+		// can be removed for complete history
+		//g.NewMessages.Messages = make([]u.RumorMessage, 0)
+
+		return out*/
 }
