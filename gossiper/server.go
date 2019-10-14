@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"strconv"
+
+	u "github.com/guillaumemichel/Peerster/utils"
 )
 
 // StartServer : starts a server
@@ -74,9 +77,14 @@ func (g *Gossiper) StartServer() {
 	http.HandleFunc("/send", sendMsg)
 	http.HandleFunc("/newpeer", addPeer)
 
-	for {
-		_ = http.ListenAndServe("127.0.0.1:8080", nil)
-		// error handling, etc..
+	address := u.LocalhostAddr + ":" + strconv.Itoa(g.GUIPort)
+	ok := true
+	for ok {
+		err := http.ListenAndServe(address, nil)
+		if err != nil {
+			println("Error: cannot start GUI")
+			ok = false
+		}
 	}
 
 }

@@ -14,3 +14,12 @@ const AntiEntropyDefault int = 10
 
 // BufferSize : read buffer size in bytes
 const BufferSize int = 2048
+
+// LocalhostAddr : "127.0.0.1"
+const LocalhostAddr string = "127.0.0.1"
+
+// DefaultUIPort : 8080
+const DefaultUIPort string = "8080"
+
+// DefaultGUIPort : 8080
+const DefaultGUIPort string = "8080"
