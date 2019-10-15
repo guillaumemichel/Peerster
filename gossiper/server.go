@@ -72,8 +72,8 @@ func (g *Gossiper) StartServer() {
 
 	http.Handle("/", http.FileServer(http.Dir("gui/html/")))
 	http.HandleFunc("/id", getGossiperID)
-	http.HandleFunc("/peers", getPeers)
-	http.HandleFunc("/messages", getLatestRumorMessagesHandler)
+	http.HandleFunc("/node", getPeers)
+	http.HandleFunc("/message", getLatestRumorMessagesHandler)
 	http.HandleFunc("/send", sendMsg)
 	http.HandleFunc("/newpeer", addPeer)
 

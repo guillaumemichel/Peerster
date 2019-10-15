@@ -14,7 +14,7 @@ func main() {
 	UIPort := flag.String("UIPort", u.DefaultUIPort, "port for the UI client")
 	gossipAddr := flag.String("gossipAddr", "127.0.0.1:5000",
 		"ip:port for the gossiper")
-	name := flag.String("name", "", "name of the gossiper")
+	name := flag.String("name", "258066", "name of the gossiper")
 	peersInput := flag.String("peers", "",
 		"comma separated list of peers of the form ip:port")
 	simple := flag.Bool("simple", false,

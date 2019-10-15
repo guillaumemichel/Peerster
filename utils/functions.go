@@ -119,6 +119,7 @@ func GetRand(n int) int {
 func GetRealRand(n int) int {
 	result, _ := rand.Int(rand.Reader, big.NewInt(int64(n)))
 	return int(result.Int64())
+	//return GetRand(n)
 }
 
 // TestMessageType : test if the packet only contains a message type and prints

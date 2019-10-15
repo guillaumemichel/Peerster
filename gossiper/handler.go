@@ -234,12 +234,12 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 				ID:     i,
 			}
 			// if it is pending, we acknowledge it by writing to the channel
-			if v, ok := g.PendingACKs.Load(identifier); ok {
+			if va, ok := g.PendingACKs.Load(identifier); ok {
 				// write to the corresponding channel to stop timer in
 				//rumor message
-				v.(u.AckValues).Channel <- true
+				va.(u.AckValues).Channel <- true
 				// set the initial message to the first message acked
-				initialMessage = v.(u.AckValues).InitialMessage
+				initialMessage = va.(u.AckValues).InitialMessage
 				ack = true
 			}
 		}
@@ -334,6 +334,12 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 
 	// if ack message and 50% chance
 	if ack && u.GetRealRand(2) == 0 {
+
+		// select a random peer
+		target := g.GetRandPeer()
+		// print flipped coin message
+		g.PrintFlippedCoin(target.String())
+
 		// recover the initial message to send to a random peer
 		rumor := g.RecoverHistoryRumor(initialMessage)
 
@@ -341,11 +347,7 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 		gPacket := u.GossipPacket{Rumor: &rumor}
 		packet := u.ProtobufGossip(&gPacket)
 
-		// select a random peer
-		target := g.GetRandPeer()
-		// print flipped coin message
-		g.PrintFlippedCoin(target.String())
-
 		g.SendRumor(packet, rumor, *target, initialMessage)
+
 	}
 }
