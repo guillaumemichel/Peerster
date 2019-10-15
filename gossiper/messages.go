@@ -21,10 +21,13 @@ func (g *Gossiper) CreateSimpleMessage(name, content string) u.SimpleMessage {
 // CreateRumorMessage :creates a gossip rumor message from a string, and
 // increases the rumorCount from the Gossiper
 func (g *Gossiper) CreateRumorMessage(content string) u.RumorMessage {
-	g.RumorCount++
+
+	id, _ := g.WantList.Load(g.Name)
+	g.WantList.Store(g.Name, uint32(id.(uint32)+1))
+
 	return u.RumorMessage{
 		Origin: g.Name,
-		ID:     g.RumorCount,
+		ID:     id.(uint32),
 		Text:   content,
 	}
 }

@@ -82,7 +82,7 @@ func (g *Gossiper) StartServer() {
 	for ok {
 		err := http.ListenAndServe(address, nil)
 		if err != nil {
-			println("Error: cannot start GUI")
+			//println("Error: cannot start GUI")
 			ok = false
 		}
 	}

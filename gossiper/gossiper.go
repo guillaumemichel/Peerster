@@ -21,7 +21,6 @@ type Gossiper struct {
 	Peers        []net.UDPAddr
 	BufSize      int
 	Mode         string
-	RumorCount   uint32
 	PendingACKs  *sync.Map // map[u.AckIdentifier]u.AckValues
 	WantList     *sync.Map // map[string]uint32
 	RumorHistory *sync.Map // map[string][]u.HistoryMessage
@@ -87,7 +86,6 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		Peers:        *peers,
 		BufSize:      u.BufferSize,
 		Mode:         mode,
-		RumorCount:   0,
 		PendingACKs:  &acks,
 		WantList:     &status,
 		RumorHistory: &history,

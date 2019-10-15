@@ -220,6 +220,10 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 	// needs to be done fast, so there will be a second similar loop with non-
 	// critical operations
 	for _, v := range status.Want {
+		// if origin no in want list, add it
+		if _, ok := g.WantList.Load(v.Identifier); !ok {
+			g.WantList.Store(v.Identifier, uint32(1))
+		}
 
 		// acknowledge rumor with ID lower than the ack we just recieved
 		for i := v.NextID; i > 0; i-- {
@@ -243,11 +247,6 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 
 	//check if peer wants packets that g have, and send them if any
 	for _, v := range status.Want {
-		// if origin no in want list, add it
-		if _, ok := g.WantList.Load(v.Identifier); !ok {
-			g.WantList.Store(v.Identifier, uint32(1))
-		}
-
 		// if v.NextID is lower than the message we want, then we have stored
 		// the message that is wanted, so we send it to peer and return
 		wantedID, _ := g.WantList.Load(v.Identifier)
@@ -256,12 +255,12 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 			ref := u.MessageReference{Origin: v.Identifier, ID: v.NextID}
 			// rumor to send
 			rumor := g.RecoverHistoryRumor(ref)
-			if !ack {
-				initialMessage = u.MessageReference{
-					Origin: rumor.Origin,
-					ID:     rumor.ID,
-				}
+			//if !ack {
+			initialMessage = u.MessageReference{
+				Origin: rumor.Origin,
+				ID:     rumor.ID,
 			}
+			//}
 			// create the packet to send
 			gp := u.GossipPacket{Rumor: &rumor}
 			packet := u.ProtobufGossip(&gp)
@@ -270,6 +269,22 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 			return
 		}
 	}
+
+	/*f := func(k, v interface{}) bool {
+		found := false
+		for _, o := range status.Want {
+			if o.Identifier == k.(string) {
+				found = true
+			}
+		}
+		if !found {
+			rumor := u.RumorMessage{
+				Origin: k.(string),
+			}
+		}
+		return found
+	}
+	g.WantList.Range(f)*/
 
 	// check if g is late on peer, and request messages if true
 	for _, v := range status.Want {
