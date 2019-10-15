@@ -255,12 +255,12 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 			ref := u.MessageReference{Origin: v.Identifier, ID: v.NextID}
 			// rumor to send
 			rumor := g.RecoverHistoryRumor(ref)
-			//if !ack {
-			initialMessage = u.MessageReference{
-				Origin: rumor.Origin,
-				ID:     rumor.ID,
+			if !ack {
+				initialMessage = u.MessageReference{
+					Origin: rumor.Origin,
+					ID:     rumor.ID,
+				}
 			}
-			//}
 			// create the packet to send
 			gp := u.GossipPacket{Rumor: &rumor}
 			packet := u.ProtobufGossip(&gp)
@@ -270,21 +270,51 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 		}
 	}
 
-	/*f := func(k, v interface{}) bool {
+	// iterate over g's wantlist, and look for files that peer doesn't have,
+	// and send it
+	f := func(k, v interface{}) bool {
+		// g knows the name, but haven't received a message yet from the peer
+		if v.(uint32) < 2 {
+			return true
+		}
 		found := false
+		identifier := k.(string)
+		// check if we can find the identifier in the status packet
 		for _, o := range status.Want {
-			if o.Identifier == k.(string) {
+			if o.Identifier == identifier {
 				found = true
+				break
 			}
 		}
+		// if identifier not found in status, send 1st packet of that identifier
 		if !found {
-			rumor := u.RumorMessage{
-				Origin: k.(string),
+			array, ok := g.RumorHistory.Load(identifier)
+			if ok && array.([]u.HistoryMessage)[0].ID == 1 {
+				// create the rumor
+				rumor := u.RumorMessage{
+					Origin: k.(string),
+					ID:     array.([]u.HistoryMessage)[0].ID,
+					Text:   array.([]u.HistoryMessage)[0].Text,
+				}
+				// protobuf it
+				gp := u.GossipPacket{Rumor: &rumor}
+				packet := u.ProtobufGossip(&gp)
+
+				// if status packet, define initial message
+				if !ack {
+					initialMessage = u.MessageReference{
+						Origin: rumor.Origin,
+						ID:     rumor.ID,
+					}
+				}
+				// send it to the peer
+				g.SendRumor(packet, rumor, *addr, initialMessage)
+				return false
 			}
 		}
-		return found
+		return true
 	}
-	g.WantList.Range(f)*/
+	g.WantList.Range(f)
 
 	// check if g is late on peer, and request messages if true
 	for _, v := range status.Want {

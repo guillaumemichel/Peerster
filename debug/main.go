@@ -15,6 +15,7 @@ func main() {
 	msg := flag.String("msg", "", "message to be forged and send")
 	id := flag.Int("id", 1, "id of the sent packet")
 	origin := flag.String("origin", "Gossiper", "origin of the forged message")
+	status := flag.Bool("status", false, "forge status packet")
 
 	flag.Parse()
 	flag.Usage = func() {
@@ -22,18 +23,28 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	if *msg == "" {
+	if *msg == "" && !*status {
 		fmt.Println("Error: no message")
 		os.Exit(1)
 	}
 
-	rumor := u.RumorMessage{
-		Origin: *origin,
-		ID:     uint32(*id),
-		Text:   *msg,
+	var gp u.GossipPacket
+	if *status {
+		var list []u.PeerStatus
+		status := u.StatusPacket{Want: list}
+		gp = u.GossipPacket{Status: &status}
+	} else {
+
+		rumor := u.RumorMessage{
+			Origin: *origin,
+			ID:     uint32(*id),
+			Text:   *msg,
+		}
+
+		gp = u.GossipPacket{Rumor: &rumor}
+
 	}
 
-	gp := u.GossipPacket{Rumor: &rumor}
 	packet := u.ProtobufGossip(&gp)
 
 	address, err := net.ResolveUDPAddr("udp4", *gossipAddr)
