@@ -17,6 +17,7 @@ type Gossiper struct {
 	ClientAddr   *net.UDPAddr
 	GossipConn   *net.UDPConn
 	ClientConn   *net.UDPConn
+	GUIPort      int
 	Peers        []net.UDPAddr
 	BufSize      int
 	Mode         string
@@ -29,7 +30,7 @@ type Gossiper struct {
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
-func NewGossiper(address, name, UIPort, peerList *string,
+func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	simple bool, antiE int) *Gossiper {
 
 	// define gossip address and connection for the new gossiper
@@ -40,6 +41,11 @@ func NewGossiper(address, name, UIPort, peerList *string,
 
 	// sanitize the uiport for new gossiper
 	cliPort, err := strconv.Atoi(*UIPort)
+	if err != nil || cliPort < 0 || cliPort > 65535 {
+		log.Fatalf("Error: invalid port %s", *UIPort)
+	}
+
+	guiPort, err := strconv.Atoi(*GUIPort)
 	if err != nil || cliPort < 0 || cliPort > 65535 {
 		log.Fatalf("Error: invalid port %s", *UIPort)
 	}
@@ -66,6 +72,10 @@ func NewGossiper(address, name, UIPort, peerList *string,
 	var newMessages []u.RumorMessage
 	nm := u.SyncNewMessages{Messages: newMessages}
 
+	if *name == "" {
+		*name = "Gossiper"
+	}
+
 	status.Store(*name, uint32(1))
 
 	return &Gossiper{
@@ -83,6 +93,7 @@ func NewGossiper(address, name, UIPort, peerList *string,
 		RumorHistory: &history,
 		AntiEntropy:  antiE,
 		NewMessages:  &nm,
+		GUIPort:      guiPort,
 	}
 }
 
@@ -145,7 +156,7 @@ func (g *Gossiper) Run() {
 }
 
 // StartNewGossiper : Creates and starts a new gossiper
-func StartNewGossiper(address, name, UIPort, peerList *string,
+func StartNewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	simple bool, antiE int) {
-	NewGossiper(address, name, UIPort, peerList, simple, antiE).Run()
+	NewGossiper(address, name, UIPort, GUIPort, peerList, simple, antiE).Run()
 }

@@ -11,7 +11,7 @@ import (
 
 func main() {
 
-	UIPort := flag.String("UIPort", "8080", "port for the UI client")
+	UIPort := flag.String("UIPort", u.DefaultUIPort, "port for the UI client")
 	gossipAddr := flag.String("gossipAddr", "127.0.0.1:5000",
 		"ip:port for the gossiper")
 	name := flag.String("name", "", "name of the gossiper")
@@ -21,6 +21,7 @@ func main() {
 		"run gossiper in simple broadcast mode")
 	antiE := flag.Int("antiEntropy", u.AntiEntropyDefault,
 		"anti entropy value in seconds")
+	GUIPort := flag.String("GUIPort", u.DefaultGUIPort, "port for the GUI client")
 	//bufferSize := flag.Int("buffer-size", 1024, "buffer size of the udp socket")
 
 	flag.Parse()
@@ -29,5 +30,5 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	g.StartNewGossiper(gossipAddr, name, UIPort, peersInput, *simple, *antiE)
+	g.StartNewGossiper(gossipAddr, name, UIPort, GUIPort, peersInput, *simple, *antiE)
 }
