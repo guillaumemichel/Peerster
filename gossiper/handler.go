@@ -139,6 +139,9 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				// and check if message already known
 				// if message already known, discard it
 
+				// update the route if message not already received
+				g.UpdateRoute(*rumor, addrStr)
+
 				if g.WriteRumorToHistory(*rumor) {
 					// prints message to console
 					g.PrintRumorMessage(*rumor, addrStr)

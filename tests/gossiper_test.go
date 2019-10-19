@@ -74,20 +74,50 @@ func GetGossiper1() gossiper.Gossiper {
 func TestUpdateRoute(t *testing.T) {
 	goss := GetGossiper1()
 	g := &goss
+
+	n1 := "127.0.0.1:5101"
+
+	rumor1 := u.RumorMessage{
+		Origin: "A",
+		ID:     1,
+		Text:   "blabla",
+	}
+
+	rumor2 := u.RumorMessage{
+		Origin: "B",
+		ID:     1,
+		Text:   "hehe",
+	}
+
+	rumor3 := u.RumorMessage{
+		Origin: "A",
+		ID:     2,
+		Text:   "haha",
+	}
+
 	if u.SyncMapCount(g.Routes) != 0 {
 		t.Errorf("Route map not empty when starting\n")
 	}
-	g.UpdateRoute("A", "127.0.0.1:5101")
+	g.UpdateRoute(rumor1, n1)
+	g.WriteRumorToHistory(rumor1)
 	if u.SyncMapCount(g.Routes) != 1 {
 		t.Errorf("New route not added (A)\n")
 	}
-	g.UpdateRoute("A", "127.0.0.1:5103")
-	if u.SyncMapCount(g.Routes) != 1 {
-		t.Errorf("New route not updated\n")
+	g.UpdateRoute(rumor1, "127.0.0.1:5103")
+	g.WriteRumorToHistory(rumor1)
+	v, ok := g.Routes.Load("A")
+	if u.SyncMapCount(g.Routes) != 1 || !ok || v.(string) != n1 {
+		t.Errorf("New route updated while it should have been\n")
 	}
-	g.UpdateRoute("B", "127.0.0.1:5101")
+	g.UpdateRoute(rumor2, n1)
+	g.WriteRumorToHistory(rumor2)
 	if u.SyncMapCount(g.Routes) != 2 {
 		t.Errorf("New route not added (B)\n")
+	}
+	g.UpdateRoute(rumor3, "127.0.0.1:5103")
+	g.WriteRumorToHistory(rumor3)
+	if u.SyncMapCount(g.Routes) != 2 {
+		t.Errorf("New route not updated (A)\n")
 	}
 
 }

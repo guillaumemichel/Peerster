@@ -111,8 +111,7 @@ func (g *Gossiper) WriteRumorToHistory(rumor u.RumorMessage) bool {
 		// more recent messages have been received, but message missing
 
 		// fill a missing slot
-		originHistory[ID-1] =
-			u.HistoryMessage{ID: ID, Text: text}
+		originHistory[ID-1] = u.HistoryMessage{ID: ID, Text: text}
 
 		found := false
 		for i, v := range originHistory {
@@ -179,4 +178,16 @@ func (g *Gossiper) GetNewMessages() []u.RumorMessage {
 		//g.NewMessages.Messages = make([]u.RumorMessage, 0)
 
 		return out*/
+}
+
+// GetLastIDFromOrigin returns the last message ID received from origin
+func (g *Gossiper) GetLastIDFromOrigin(origin string) uint32 {
+	// load the history for the given origin
+	v, ok := g.WantList.Load(origin)
+	if !ok {
+		// if author not found in history return 0
+		return 0
+	}
+	// if found return the waited one minus one (the last received)
+	return v.(uint32) - 1
 }
