@@ -26,6 +26,7 @@ type Gossiper struct {
 	RumorHistory *sync.Map // map[string][]u.HistoryMessage
 	AntiEntropy  int
 	NewMessages  *u.SyncNewMessages
+	Routes       *sync.Map // map[string]string
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
@@ -67,6 +68,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	var acks sync.Map
 	var history sync.Map
 	var status sync.Map
+	var routes sync.Map
 
 	var newMessages []u.RumorMessage
 	nm := u.SyncNewMessages{Messages: newMessages}
@@ -92,6 +94,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		AntiEntropy:  antiE,
 		NewMessages:  &nm,
 		GUIPort:      guiPort,
+		Routes:       &routes,
 	}
 }
 
@@ -129,10 +132,8 @@ func (g *Gossiper) DoAntiEntropy() {
 				// send status to random peer
 				target := g.GetRandPeer()
 				g.SendStatus(target)
-
 			}
 		}
-
 	}
 }
 

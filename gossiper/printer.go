@@ -67,3 +67,8 @@ func (g *Gossiper) PrintFlippedCoin(addr string) {
 func (g *Gossiper) PrintInSync(addr string) {
 	fmt.Printf("IN SYNC WITH %s\n", addr)
 }
+
+// PrintUpdateRoute prints the DSDV update message
+func (g *Gossiper) PrintUpdateRoute(origin, addr string) {
+	fmt.Printf("DSDV %s %s\n", origin, addr)
+}
