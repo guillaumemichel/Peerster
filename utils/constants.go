@@ -26,3 +26,9 @@ const DefaultUIPort string = "8080"
 
 // DefaultGUIPort : 8080
 const DefaultGUIPort string = "8080"
+
+// PrivateMessageID is the ID for private messages
+const PrivateMessageID uint32 = 0
+
+// DefaultHopLimit default hop limit for private messages
+const DefaultHopLimit uint32 = 10

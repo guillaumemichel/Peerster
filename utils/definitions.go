@@ -4,7 +4,10 @@ import "sync"
 
 // Message : simple message type that client send to gossiper
 type Message struct {
-	Text string
+	Text        string
+	Destination *string
+	File        *string
+	Request     *[]byte
 }
 
 // SimpleMessage : a simple message structure containing the original sender's
@@ -38,9 +41,19 @@ type StatusPacket struct {
 
 // GossipPacket : default gossip packet used by the Peerster
 type GossipPacket struct {
-	Simple *SimpleMessage
-	Rumor  *RumorMessage
-	Status *StatusPacket
+	Simple  *SimpleMessage
+	Rumor   *RumorMessage
+	Status  *StatusPacket
+	Private *PrivateMessage
+}
+
+// PrivateMessage : private message structure
+type PrivateMessage struct {
+	Origin      string
+	ID          uint32
+	Text        string
+	Destination string
+	HopLimit    uint32
 }
 
 // HistoryMessage : message stored in Gossiper history in an arry identifying

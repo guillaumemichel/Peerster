@@ -21,8 +21,10 @@ func RequireMessage(msg *string) {
 
 func main() {
 	// treating the flags
-	UIPort := flag.String("UIPort", "8080", "port for the UI client")
+	UIPort := flag.String("UIPort", u.DefaultUIPort, "port for the UI client")
 	msg := flag.String("msg", "", "message to be sent")
+	dest := flag.String("dest", "", "destination for the private message; "+
+		"can be omitted")
 
 	flag.Parse()
 	flag.Usage = func() {
@@ -54,7 +56,10 @@ func main() {
 		fmt.Println("Error: ", err)
 	}
 
-	packetToSend := u.Message{Text: *msg}
+	packetToSend := u.Message{
+		Text:        *msg,
+		Destination: dest,
+	}
 
 	// serializing the packet to send
 	bytesToSend := u.ProtobufMessage(&packetToSend)

@@ -125,13 +125,27 @@ func GetRealRand(n int) int {
 // TestMessageType : test if the packet only contains a message type and prints
 // an error and returns false if it is not the case
 func TestMessageType(p *GossipPacket) bool {
-	if (p.Simple != nil && p.Rumor != nil) ||
-		(p.Simple != nil && p.Status != nil) ||
-		(p.Rumor != nil && p.Status != nil) ||
-		(p.Simple == nil && p.Rumor == nil && p.Status == nil) {
-		// at least 2 message types or none are present in the packet
+	// counter of pointers that are set in gossip packet
+	n := 0
+	if p.Simple != nil {
+		n++
+	}
+	if p.Rumor != nil {
+		n++
+	}
+	if p.Status != nil {
+		n++
+	}
+	if p.Private != nil {
+		n++
+	}
+	if n > 1 {
 		fmt.Println("Error: the received GossipPacket contains multiple",
 			"messages")
+		return false
+	} else if n < 1 {
+		fmt.Println("Error: the received GossipPacket don't contain any " +
+			"message")
 		return false
 	}
 	return true

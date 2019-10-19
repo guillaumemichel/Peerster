@@ -117,6 +117,41 @@ func (g *Gossiper) SendRumorToRandomWithoutPacketNorInitial(
 	g.SendRumorToRandom(packet, rumor, ref)
 }
 
+// DealWithPrivateMessage deals with private messages
+func (g *Gossiper) DealWithPrivateMessage(pm u.PrivateMessage) {
+	dst := pm.Destination
+	// if the destination is g, print the private message to console
+	if dst == g.Name {
+		g.PrintPrivateMessage(pm)
+		// TODO update GUI with pm
+	} else {
+		// decrease the hop limit
+		pm.HopLimit--
+		// if positive forward it, otherwise drop it
+		if pm.HopLimit > 0 {
+			// load the next hop to destination
+			v, ok := g.Routes.Load(dst)
+			if !ok {
+				fmt.Println("No route to", dst)
+				return
+			}
+
+			// resolve the udp address of the next hop
+			addr, err := net.ResolveUDPAddr("udp4", v.(string))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			// build the gossip packet and protobuf it
+			gp := u.GossipPacket{Private: &pm}
+			packet := u.ProtobufGossip(&gp)
+
+			// send the packet
+			g.GossipConn.WriteToUDP(packet, addr)
+		}
+	}
+}
+
 // HandleGossip : handle a gossip message
 func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 	rcvMsg, ok := u.UnprotobufGossip(rcvBytes)
@@ -145,12 +180,17 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 						"and received a RumorMessage, discarding it")
 				}
 
-			} else { // StatusMessage received
+			} else if rcvMsg.Status != nil { // StatusMessage received
 				m := rcvMsg.Status
 				// prints message to console
 				g.PrintStatusMessage(*m, addrStr)
 				fmt.Println("Warning: gossiper running in Simple mode",
 					"and received a StatusPacket, discarding it")
+			} else if rcvMsg.Private != nil { // PrivateMessage received
+				fmt.Println("Warning: gossiper running in Simple mode",
+					"and received a Private message, discarding it")
+			} else {
+				fmt.Println("Error: unrecognized message")
 			}
 
 		} else if g.Mode == u.RumorModeStr { // rumor mode
@@ -188,11 +228,17 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 					g.SendRumorToRandom(rcvBytes, *rumor, ref)
 				}
 
-			} else { // StatusMessage received
+			} else if rcvMsg.Status != nil { // StatusMessage received
 				m := rcvMsg.Status
 				// prints message to console
 				g.PrintStatusMessage(*m, addrStr)
 				g.DealWithStatus(*m, addrStr, udpAddr)
+			} else if rcvMsg.Private != nil { // PrivateMessage received
+				pm := rcvMsg.Private
+				g.DealWithPrivateMessage(*pm)
+
+			} else {
+				fmt.Println("Error: unrecognized message")
 			}
 		}
 	}
@@ -218,12 +264,17 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			g.Broadcast(packet, nil)
 		} else { // rumor mode
 
-			// creates a RumorMessage in GossipPacket to be broadcasted
-			rumor := g.CreateRumorMessage(m)
+			if *rcvMsg.Destination == "" { // public message
+				// creates a RumorMessage in GossipPacket to be broadcasted
+				rumor := g.CreateRumorMessage(m)
 
-			//write message to history
-			if g.WriteRumorToHistory(rumor) {
-				g.SendRumorToRandomWithoutPacketNorInitial(rumor)
+				//write message to history
+				if g.WriteRumorToHistory(rumor) {
+					g.SendRumorToRandomWithoutPacketNorInitial(rumor)
+				}
+			} else { // private message
+				pm := g.CreatePrivateMessage(m, *rcvMsg.Destination)
+				g.DealWithPrivateMessage(pm)
 			}
 		}
 

@@ -72,3 +72,9 @@ func (g *Gossiper) PrintInSync(addr string) {
 func (g *Gossiper) PrintUpdateRoute(origin, addr string) {
 	fmt.Printf("DSDV %s %s\n", origin, addr)
 }
+
+// PrintPrivateMessage prints the private message to destination host
+func (g *Gossiper) PrintPrivateMessage(pm u.PrivateMessage) {
+	fmt.Printf("PRIVATE origin %s hop-limit %d contents %s",
+		pm.Origin, pm.HopLimit, pm.Text)
+}

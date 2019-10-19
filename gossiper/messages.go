@@ -40,6 +40,18 @@ func (g *Gossiper) CreateRouteMessage() u.RumorMessage {
 	return g.CreateRumorMessage("")
 }
 
+// CreatePrivateMessage returns a private message with given text and
+// destination
+func (g *Gossiper) CreatePrivateMessage(text, dst string) u.PrivateMessage {
+	return u.PrivateMessage{
+		Origin:      g.Name,
+		ID:          u.PrivateMessageID,
+		Text:        text,
+		Destination: dst,
+		HopLimit:    u.DefaultHopLimit,
+	}
+}
+
 // ReplaceRelayPeerSimple : replaces the relay peer of a simple message with its
 // own address
 func (g *Gossiper) ReplaceRelayPeerSimple(
