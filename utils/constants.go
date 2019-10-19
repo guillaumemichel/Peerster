@@ -12,6 +12,9 @@ const TimeoutValue int = 10
 // AntiEntropyDefault : default value in seconds for anti entropy
 const AntiEntropyDefault int = 10
 
+// RTimerDefault is the defaut value for rtimer
+const RTimerDefault int = 0
+
 // BufferSize : read buffer size in bytes
 const BufferSize int = 2048
 

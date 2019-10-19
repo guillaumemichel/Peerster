@@ -151,10 +151,12 @@ func (g *Gossiper) WriteRumorToHistory(rumor u.RumorMessage) bool {
 		g.RumorHistory.Store(origin, originHistory)
 		// don't update the wantlist, as wanted message still missing
 	}
-	g.NewMessages.Mutex.Lock()
-	defer g.NewMessages.Mutex.Unlock()
-	g.NewMessages.Messages = append(g.NewMessages.Messages, rumor)
 
+	if rumor.Text != "" {
+		g.NewMessages.Mutex.Lock()
+		defer g.NewMessages.Mutex.Unlock()
+		g.NewMessages.Messages = append(g.NewMessages.Messages, rumor)
+	}
 	return true
 }
 

@@ -27,11 +27,12 @@ type Gossiper struct {
 	AntiEntropy  int
 	NewMessages  *u.SyncNewMessages
 	Routes       *sync.Map // map[string]string
+	RTimer       int
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
 func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
-	simple bool, antiE int) *Gossiper {
+	simple bool, rtimer, antiE int) *Gossiper {
 
 	// define gossip address and connection for the new gossiper
 	gossAddr, err := net.ResolveUDPAddr("udp4", *address)
@@ -95,6 +96,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		NewMessages:  &nm,
 		GUIPort:      guiPort,
 		Routes:       &routes,
+		RTimer:       rtimer,
 	}
 }
 
@@ -137,6 +139,22 @@ func (g *Gossiper) DoAntiEntropy() {
 	}
 }
 
+// DoRouteRumors sends route rumors every rtime seconds
+func (g *Gossiper) DoRouteRumors() {
+	if g.RTimer > 0 {
+		for {
+			// sleep for rtimer value
+			time.Sleep(time.Duration(g.RTimer) * time.Second)
+
+			// if any peers
+			if len(g.Peers) > 0 {
+				// send route rumor to random peer
+				g.SendRouteRumor()
+			}
+		}
+	}
+}
+
 // Run : runs a given gossiper
 func (g *Gossiper) Run() {
 	go g.StartServer()
@@ -145,10 +163,15 @@ func (g *Gossiper) Run() {
 	go g.Listen(g.ClientConn)
 	go g.Listen(g.GossipConn)
 
-	// keep the program active
+	// send the initial route rumor
+	go g.SendRouteRumor()
+
+	// if in rumor mode, do anti entropy and sends route rumors
 	if g.Mode == u.RumorModeStr {
-		g.DoAntiEntropy()
+		go g.DoRouteRumors()
+		go g.DoAntiEntropy()
 	}
+	// keep the program active
 	for {
 
 	}
@@ -156,6 +179,7 @@ func (g *Gossiper) Run() {
 
 // StartNewGossiper : Creates and starts a new gossiper
 func StartNewGossiper(address, name, UIPort, GUIPort, peerList *string,
-	simple bool, antiE int) {
-	NewGossiper(address, name, UIPort, GUIPort, peerList, simple, antiE).Run()
+	simple bool, rtimer, antiE int) {
+	NewGossiper(address, name, UIPort, GUIPort, peerList, simple,
+		rtimer, antiE).Run()
 }

@@ -22,7 +22,10 @@ func (g *Gossiper) CreateSimpleMessage(name, content string) u.SimpleMessage {
 // increases the rumorCount from the Gossiper
 func (g *Gossiper) CreateRumorMessage(content string) u.RumorMessage {
 
-	id, _ := g.WantList.Load(g.Name)
+	id, ok := g.WantList.Load(g.Name)
+	if !ok {
+		fmt.Println("Error: I don't know my name")
+	}
 	g.WantList.Store(g.Name, uint32(id.(uint32)+1))
 
 	return u.RumorMessage{
@@ -30,6 +33,11 @@ func (g *Gossiper) CreateRumorMessage(content string) u.RumorMessage {
 		ID:     id.(uint32),
 		Text:   content,
 	}
+}
+
+// CreateRouteMessage returns a route rumor message
+func (g *Gossiper) CreateRouteMessage() u.RumorMessage {
+	return g.CreateRumorMessage("")
 }
 
 // ReplaceRelayPeerSimple : replaces the relay peer of a simple message with its

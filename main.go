@@ -20,9 +20,13 @@ func main() {
 	simple := flag.Bool("simple", false,
 		"run gossiper in simple broadcast mode")
 	antiE := flag.Int("antiEntropy", u.AntiEntropyDefault,
-		"anti entropy value in seconds")
-	GUIPort := flag.String("GUIPort", u.DefaultGUIPort, "port for the GUI client")
-	//bufferSize := flag.Int("buffer-size", 1024, "buffer size of the udp socket")
+		"Use the given timeout in seconds for anti-entropy. If "+
+			"the flag is absent, the default anti-entropy duration is 10 "+
+			"seconds.")
+	GUIPort := flag.String("GUIPort", u.DefaultGUIPort,
+		"port for the GUI client")
+	rtimer := flag.Int("rtimer", u.RTimerDefault, "Timeout in seconds to "+
+		"send route rumors. 0 (default) means disable sending route rumors.")
 
 	flag.Parse()
 	flag.Usage = func() {
@@ -30,5 +34,6 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	g.StartNewGossiper(gossipAddr, name, UIPort, GUIPort, peersInput, *simple, *antiE)
+	g.StartNewGossiper(gossipAddr, name, UIPort, GUIPort, peersInput,
+		*simple, *rtimer, *antiE)
 }

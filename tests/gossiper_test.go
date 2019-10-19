@@ -24,6 +24,7 @@ func GetGossiper1() gossiper.Gossiper {
 	cliPort := 8090
 	guiPort := 8090
 	antiEntropy := 10
+	rtimer := 0
 	peerList := "127.0.0.1:5101,127.0.0.1:5103"
 
 	mode := u.RumorModeStr
@@ -66,6 +67,7 @@ func GetGossiper1() gossiper.Gossiper {
 		NewMessages:  &nm,
 		GUIPort:      guiPort,
 		Routes:       &routes,
+		RTimer:       rtimer,
 	}
 
 }
