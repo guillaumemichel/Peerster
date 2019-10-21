@@ -31,7 +31,9 @@ func (g *Gossiper) GetPeers() []string {
 
 // AddPeer : adds the given peer to peers list if not already in it
 func (g *Gossiper) AddPeer(addr *net.UDPAddr) {
-	if !strings.Contains(g.PeersToString(), addr.String()) {
+	addrStr := addr.String()
+	if !strings.Contains(g.PeersToString(), addrStr) &&
+		addrStr != g.GossipAddr.String() && addrStr != g.GossipAddr.String() {
 		g.Peers = append(g.Peers, *addr)
 	}
 }

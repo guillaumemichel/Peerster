@@ -264,7 +264,8 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			g.Broadcast(packet, nil)
 		} else { // rumor mode
 
-			if *rcvMsg.Destination == "" { // public message
+			if rcvMsg.Destination == nil || *rcvMsg.Destination == "" {
+				// public message
 				// creates a RumorMessage in GossipPacket to be broadcasted
 				rumor := g.CreateRumorMessage(m)
 
@@ -425,9 +426,4 @@ func (g *Gossiper) SendRouteRumor() {
 	g.WriteRumorToHistory(rumor)
 	// sends it to a random peerw
 	g.SendRumorToRandomWithoutPacketNorInitial(rumor)
-}
-
-// SendStartupRouteRumor does what you think it does
-func (g *Gossiper) SendStartupRouteRumor() {
-
 }

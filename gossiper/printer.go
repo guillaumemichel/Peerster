@@ -75,6 +75,6 @@ func (g *Gossiper) PrintUpdateRoute(origin, addr string) {
 
 // PrintPrivateMessage prints the private message to destination host
 func (g *Gossiper) PrintPrivateMessage(pm u.PrivateMessage) {
-	fmt.Printf("PRIVATE origin %s hop-limit %d contents %s",
+	fmt.Printf("PRIVATE origin %s hop-limit %d contents %s\n",
 		pm.Origin, pm.HopLimit, pm.Text)
 }

@@ -56,9 +56,16 @@ func main() {
 		fmt.Println("Error: ", err)
 	}
 
+	var dst string
+	if dest == nil {
+		dst = ""
+	} else {
+		dst = *dest
+	}
+
 	packetToSend := u.Message{
 		Text:        *msg,
-		Destination: dest,
+		Destination: &dst,
 	}
 
 	// serializing the packet to send
