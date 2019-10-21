@@ -70,12 +70,50 @@ func (g *Gossiper) StartServer() {
 		}
 	}
 
+	destinationHandler := func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			// load last dest received
+			s := r.FormValue("last_dest")
+			n, _ := strconv.Atoi(s)
+			// get the dest added after last
+			dests := g.GetDestinations(uint32(n))
+			// if there are some new dests
+			if dests != nil {
+				peersJSON, _ := json.Marshal(dests)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(peersJSON)
+			}
+		}
+	}
+
+	pmHandler := func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			// load last dest received
+			s := r.FormValue("last_pm")
+			n, _ := strconv.Atoi(s)
+			// get the dest added after last
+			pms := g.GetPrivateMessage(n)
+			// if there are some new dests
+			if pms != nil {
+				pmJSON, _ := json.Marshal(pms)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(pmJSON)
+			}
+		}
+	}
+
 	http.Handle("/", http.FileServer(http.Dir("gui/html/")))
 	http.HandleFunc("/id", getGossiperID)
 	http.HandleFunc("/node", getPeers)
 	http.HandleFunc("/message", getLatestRumorMessagesHandler)
 	http.HandleFunc("/send", sendMsg)
 	http.HandleFunc("/newpeer", addPeer)
+	http.HandleFunc("/updatedest", destinationHandler)
+	http.HandleFunc("/pm", pmHandler)
 
 	address := u.LocalhostAddr + ":" + strconv.Itoa(g.GUIPort)
 	ok := true

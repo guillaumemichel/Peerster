@@ -28,6 +28,7 @@ type Gossiper struct {
 	NewMessages  *u.SyncNewMessages
 	Routes       *sync.Map // map[string]string
 	RTimer       int
+	PrivateMsg   []u.PrivateMessage
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
@@ -70,6 +71,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	var history sync.Map
 	var status sync.Map
 	var routes sync.Map
+	var pm []u.PrivateMessage
 
 	var newMessages []u.RumorMessage
 	nm := u.SyncNewMessages{Messages: newMessages}
@@ -97,6 +99,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		GUIPort:      guiPort,
 		Routes:       &routes,
 		RTimer:       rtimer,
+		PrivateMsg:   pm,
 	}
 }
 

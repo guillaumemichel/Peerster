@@ -785,17 +785,16 @@ Website: http://emilcarlsson.se/
 			<input type="text" placeholder="Search contacts..." />
 		</div> -->
 		<div id="contacts">
-			<ul>
+			<!-- <ul>
 				<li class="contact">
 					<div class="wrap">
-						<!-- <span class="contact-status online"></span>
-						<img src="http://emilcarlsson.se/assets/louislitt.png" alt="" /> -->
+						<span class="contact-status online"></span>
+						<img src="http://emilcarlsson.se/assets/louislitt.png" alt="" />
 						<div class="meta">
 							<p class="name">Global</p>
-							<p id="last_global_message" class="preview">You just got LITT up, Mike.</p>
 						</div>
 					</div>
-                </li>
+        </li> -->
                 <!--
 				<li class="contact active">
 					<div class="wrap">
@@ -895,7 +894,7 @@ Website: http://emilcarlsson.se/
 		</div> -->
   </div>
 	<div class="content">
-		<div class="contact-profile">
+		<div class="contact-profile" id="header">
 			<!-- <img src="http://emilcarlsson.se/assets/harveyspecter.png" alt="" /> -->
 			<p>Global</p>
 			<!-- <div class="social-media">
@@ -953,12 +952,26 @@ Website: http://emilcarlsson.se/
 <script >
 
 var id="Gossiper"
+var dest_count = 0
+var contacts = ['<ul><li class="contact active" onclick="changeConversation(0)"><div class="wrap"><div class="meta"><p class="name">Global</p></div></div></li></ul>']
+
+var names = ['Global']
+var contact_index = 0
+var messages = [[]]
+
+var last_pm
 
 $(document).ready(function(){
+    setContacts()
     getPeerID()
     refresh()
     setInterval(refresh, 1000);
 })
+
+function setContacts(){
+  $('#contacts').empty()
+  $('#contacts').append(contacts)
+}
 
 function getPeerID(){
     $.ajax({
@@ -975,6 +988,8 @@ function getPeerID(){
 function refresh(){
     getMessages()
     getPeers()
+    updateDest()
+    getPM()
 }
 
 function getMessages(){
@@ -987,18 +1002,21 @@ function getMessages(){
           writeNewMessages($.map(data, function(item){
             return {origin: item["Origin"], text: item["Text"]}
           }));
+          if(contact_index==0){
+            updateMessage(0)
+          }
         }
       }
     });
 }
 
 function writeNewMessages(data){
-    $("#messages_history").empty()
+    messages[0] = [];
     $.each(data, function(_, msg){
         if(msg.origin === id){
-            $("#messages_history").append(createSent(msg.origin, msg.text))
+            messages[0].push(createSent(msg.origin, msg.text))
         } else {
-            $("#messages_history").append(createReply(msg.origin, msg.text))
+            messages[0].push(createReply(msg.origin, msg.text))
         }
     });
 }
@@ -1052,6 +1070,85 @@ function sendPeer(){
       }      
     });
   }
+}
+
+function updateDest(){
+  $.ajax({
+        url: "/updatedest",
+        method: "GET",
+        dataType: "json",
+        data: {
+          last_dest: dest_count
+        },
+        success: function(data,_,_) {
+          if(data !== null && data.length > 0){
+            $.each(data, function(_,dest){
+                names.push(dest)
+                dest_count = names.length + 1
+                window.alert(dest_count)
+                contacts.push('<ul><li class="contact" onclick="changeConversation('+dest_count+')"><div class="wrap"><div class="meta"><p class="name">'+dest+'</p></div></div></li></ul>')
+            })
+            setContacts()
+          }
+        }
+      });
+
+}
+
+function createContact(dest){
+  return  '<ul><li class="contact active">' +
+            '<div class="wrap">' +
+              '<div class="meta">' +
+                '<p class="name">' + dest + '</p>' +
+                '<p class="preview">Wrong. You take the gun, or you pull out a bigger one. Or, you call their bluff. Or, you do any one of a hundred and forty six other things.</p>' +
+              '</div>' +
+            '</div>' +
+          '</li></ul>'
+
+}
+
+function changeConversation(n){
+
+  // update the current contact
+  contacts[contact_index] = '<ul><li class="contact" onclick="changeConversation('+contact_index+')"><div class="wrap"><div class="meta"><p class="name">'+names[contact_index]+'</p></div></div></li></ul>'
+  contacts[n] = '<ul><li class="contact active" onclick="changeConversation('+n+')"><div class="wrap"><div class="meta"><p class="name">'+names[n]+'</p></div></div></li></ul>'
+  contact_index = n
+  setContacts()
+
+  // update the header
+  $('#header').empty()
+  $('#header').append('<p>'+ names[n] + '</p>')
+
+  updateMessage(n)
+}
+
+function getPM(){
+  $.ajax({
+    url: "/pm",
+    method: "GET",
+    dataType: "json",
+    success: function(data,_,_){
+      if(data !== null) {
+        addMessage($.map(data, function(item){
+          return {origin: item["Origin"], text: item["Text"]}
+        }));
+      }
+    }
+  });
+}
+
+function addMessage(origin, text){
+  // careful if dest do not exist
+  var ind = names.indexOf(origin)
+  messages.push(createReply(origin,text))
+  if(ind === contact_index){
+    updateMessage(ind)
+  }
+}
+
+function updateMessage(n){
+  $("#messages_history").empty()
+  $("#messages_history").append(messages[n])
 }
 
 /*

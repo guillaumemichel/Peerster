@@ -29,6 +29,49 @@ func (g *Gossiper) GetPeers() []string {
 	return list
 }
 
+// GetLastPeers returns a list of peers that arrived after 'last'
+func (g *Gossiper) GetLastPeers(last string) []string {
+	// check if last is the last peer of g
+	peers := g.Peers
+	if peers[len(peers)-1].String() != last {
+		var addrs []string
+		index := len(peers)
+		for i, v := range peers {
+			if i < index && v.String() == last {
+				index = i
+			} else if i > index {
+				// write the addresses that are after the last known one
+				addrs = append(addrs, v.String())
+			}
+		}
+		return addrs
+	}
+	return nil
+}
+
+// GetDestinations return the last destinations not sync yet
+func (g *Gossiper) GetDestinations(c uint32) []string {
+	if c == u.SyncMapCount(g.Routes) {
+		return nil
+	}
+	var dests []string
+	// append all keys (string) of routes to dests
+	f := func(k, v interface{}) bool {
+		dests = append(dests, k.(string))
+		return false
+	}
+	g.Routes.Range(f)
+	return dests
+}
+
+// GetPrivateMessage returns the pms with index higher than the parameter
+func (g *Gossiper) GetPrivateMessage(c int) []u.PrivateMessage {
+	if c <= len(g.PrivateMsg) {
+		return nil
+	}
+	return g.PrivateMsg[c:]
+}
+
 // AddPeer : adds the given peer to peers list if not already in it
 func (g *Gossiper) AddPeer(addr *net.UDPAddr) {
 	addrStr := addr.String()
@@ -88,7 +131,7 @@ func (g *Gossiper) WriteRumorToHistory(rumor u.RumorMessage) bool {
 	text := rumor.Text
 
 	// discard messages without origin or with message ID < 1
-	if origin == "" || rumor.ID < 1 {
+	if origin == "" {
 		return false
 	}
 
