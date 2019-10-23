@@ -3,6 +3,7 @@ package gossiper
 import (
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -29,6 +30,7 @@ type Gossiper struct {
 	Routes       *sync.Map // map[string]string
 	RTimer       int
 	PrivateMsg   []u.PrivateMessage
+	Printer      *log.Logger
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
@@ -81,6 +83,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	}
 
 	status.Store(*name, uint32(1))
+	printer := log.New(os.Stdout, "", 0)
 
 	return &Gossiper{
 		Name:         *name,
@@ -100,6 +103,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		Routes:       &routes,
 		RTimer:       rtimer,
 		PrivateMsg:   pm,
+		Printer:      printer,
 	}
 }
 

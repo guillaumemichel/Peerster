@@ -305,7 +305,7 @@
   background: #435f7a;
 }
 #frame #sidepanel #hosts {
-  margin-left: 10px;
+  margin-left: 20px;
   margin-bottom: 15px;
   font-weight: 300;
 }
@@ -958,15 +958,31 @@ var contacts = ['<ul><li class="contact active" onclick="changeConversation(0)">
 var names = ['Global']
 var contact_index = 0
 var messages = [[]]
+var peers = ''
 
-var last_pm
+var last_pm = 0
+var message_count = 0
+
 
 $(document).ready(function(){
+    init()
     setContacts()
     getPeerID()
     refresh()
-    setInterval(refresh, 1000);
+    setInterval(refresh, 500);
 })
+
+function init() {
+  id = "Gossiper"
+  dest_count = 0
+  names = ['Global']
+  contact_index = 0
+  messages = [[]]
+  contacts = ['<ul><li class="contact active" onclick="changeConversation(0)"><div class="wrap"><div class="meta"><p class="name">Global</p></div></div></li></ul>']
+  peers = ''
+  peer_count = 0
+  message_count = 0
+}
 
 function setContacts(){
   $('#contacts').empty()
@@ -997,6 +1013,9 @@ function getMessages(){
       url: "/message",
       method: "GET",
       dataType: "json",
+      data: {
+        number: message_count
+      },
       success: function(data,_,_){
         if(data !== null) {
           writeNewMessages($.map(data, function(item){
@@ -1011,8 +1030,9 @@ function getMessages(){
 }
 
 function writeNewMessages(data){
-    messages[0] = [];
+    //messages[0] = [];
     $.each(data, function(_, msg){
+        message_count = message_count + 1
         if(msg.origin === id){
             messages[0].push(createSent(msg.origin, msg.text))
         } else {
@@ -1039,18 +1059,29 @@ function getPeers(){
   $.ajax({
     url: "/node",
     dataType: "json",
+    data: {
+        number: peer_count
+      },
     success: function(data,_,_){
       if(data !== null && data.length > 0){
-        $("#hosts").empty()
-        $("#hosts").append('<b>Peers:</b>')
-      
         $.each(data, function(_,peer){
-          $("#hosts").append('<p>'+peer+'</p>')
+          peer_count = peer_count + 1
+          if(peers===''){
+            peers = peer
+          } else {
+            peers = peers + ', ' + peer
+          }
         })
+        updatePeers()
       }
-
     }
   });
+}
+
+function updatePeers(){
+  $("#hosts").empty()
+  $("#hosts").append('<b>Peers:</b>')
+  $("#hosts").append('<p>'+peers+'</p>')
 }
 
 function sendPeer(){
@@ -1078,15 +1109,17 @@ function updateDest(){
         method: "GET",
         dataType: "json",
         data: {
-          last_dest: dest_count
+          dest_count: dest_count
         },
         success: function(data,_,_) {
           if(data !== null && data.length > 0){
             $.each(data, function(_,dest){
-                names.push(dest)
-                dest_count = names.length + 1
-                window.alert(dest_count)
-                contacts.push('<ul><li class="contact" onclick="changeConversation('+dest_count+')"><div class="wrap"><div class="meta"><p class="name">'+dest+'</p></div></div></li></ul>')
+                if($.inArray(dest, names) === -1 && dest !== id){
+                  names.push(dest)
+                  dest_count = dest_count + 1
+                  messages.push([''])
+                  contacts.push('<ul><li class="contact" onclick="changeConversation('+dest_count+')"><div class="wrap"><div class="meta"><p class="name">'+dest+'</p></div></div></li></ul>')
+                }
             })
             setContacts()
           }
@@ -1100,7 +1133,6 @@ function createContact(dest){
             '<div class="wrap">' +
               '<div class="meta">' +
                 '<p class="name">' + dest + '</p>' +
-                '<p class="preview">Wrong. You take the gun, or you pull out a bigger one. Or, you call their bluff. Or, you do any one of a hundred and forty six other things.</p>' +
               '</div>' +
             '</div>' +
           '</li></ul>'
@@ -1127,23 +1159,35 @@ function getPM(){
     url: "/pm",
     method: "GET",
     dataType: "json",
+    data: {
+      last_pm: last_pm
+    },
     success: function(data,_,_){
       if(data !== null) {
         addMessage($.map(data, function(item){
-          return {origin: item["Origin"], text: item["Text"]}
+          return {origin: item["Origin"], text: item["Text"], dest: item["Destination"]}
         }));
       }
     }
   });
 }
 
-function addMessage(origin, text){
+function addMessage(data){
   // careful if dest do not exist
-  var ind = names.indexOf(origin)
-  messages.push(createReply(origin,text))
-  if(ind === contact_index){
-    updateMessage(ind)
-  }
+  $.each(data, function(_, msg){
+    last_pm = last_pm + 1
+    if(msg.origin === id){
+      var ind = names.indexOf(msg.dest)
+      messages[ind].push(createSent(msg.origin,msg.text))
+    } else {
+      var ind = names.indexOf(msg.origin)
+      messages[ind].push(createReply(msg.origin,msg.text))
+    }
+    if(ind === contact_index){
+      updateMessage(ind)
+    }
+  });
+  return false
 }
 
 function updateMessage(n){
@@ -1198,18 +1242,25 @@ function newMessage() {
 	if($.trim(msg) == '') {
 		return false;
 	}
-    $('.message-input input').val(null);
-    $.ajax({
-        url: "/send",
-        method: "POST",
-        dataType: "json",
-        data: {
-          message: msg
-        },
-        success: function() {
-          refresh()
-        }
-      });
+  $('.message-input input').val(null);
+  var dest
+  if(contact_index===0){
+    dest = ""
+  } else {
+    dest = names[contact_index]
+  }
+  $.ajax({
+      url: "/send",
+      method: "POST",
+      dataType: "json",
+      data: {
+        message: msg,
+        dest: dest
+      },
+      success: function() {
+        refresh()
+      }
+    });
 };
 
 $('.submit').click(function() {

@@ -1,14 +1,14 @@
 package gossiper
 
 import (
-	"fmt"
+	"strconv"
 
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
 // PrintPeers : print the known peers from the gossiper
 func (g *Gossiper) PrintPeers() {
-	fmt.Println("PEERS", g.PeersToString())
+	g.Printer.Println("PEERS", g.PeersToString())
 }
 
 // PeersToString : return a string containing the list of known peers
@@ -28,14 +28,14 @@ func (g *Gossiper) PeersToString() string {
 
 // PrintMessageClient : print messages from the client
 func (g *Gossiper) PrintMessageClient(text string) {
-	fmt.Println("CLIENT MESSAGE", text)
+	g.Printer.Println("CLIENT MESSAGE", text)
 	g.PrintPeers()
 }
 
 // PrintSimpleMessage : print simple messages received from gossipers
 func (g *Gossiper) PrintSimpleMessage(msg u.SimpleMessage, from string) {
 
-	fmt.Printf("SIMPLE MESSAGE origin %s from %s contents %s\n",
+	g.Printer.Printf("SIMPLE MESSAGE origin %s from %s contents %s\n",
 		msg.OriginalName, from, msg.Contents)
 
 	g.PrintPeers()
@@ -43,38 +43,40 @@ func (g *Gossiper) PrintSimpleMessage(msg u.SimpleMessage, from string) {
 
 // PrintRumorMessage : print rumor messages received from gossipers
 func (g *Gossiper) PrintRumorMessage(msg u.RumorMessage, from string) {
-	fmt.Printf("RUMOR origin %s from %s ID %d contents %s\n",
+	g.Printer.Printf("RUMOR origin %s from %s ID %d contents %s\n",
 		msg.Origin, from, msg.ID, msg.Text)
 	g.PrintPeers()
 }
 
 // PrintStatusMessage : print status messages received from gossipers
 func (g *Gossiper) PrintStatusMessage(msg u.StatusPacket, from string) {
-	fmt.Printf("STATUS from %s", from)
+	str := "STATUS from " + from
+	g.Printer.Printf("STATUS from %s", from)
 	for _, v := range msg.Want {
-		fmt.Printf(" peer %s nextID %d", v.Identifier, v.NextID)
+		str += " peer " + v.Identifier + " nextID " +
+			strconv.Itoa(int(v.NextID))
 	}
-	fmt.Println()
+	g.Printer.Println(str)
 	g.PrintPeers()
 }
 
 // PrintFlippedCoin : prints flipped coin message
 func (g *Gossiper) PrintFlippedCoin(addr string) {
-	fmt.Printf("FLIPPED COIN sending rumor to %s\n", addr)
+	g.Printer.Printf("FLIPPED COIN sending rumor to %s\n", addr)
 }
 
 // PrintInSync : prints in sync message
 func (g *Gossiper) PrintInSync(addr string) {
-	fmt.Printf("IN SYNC WITH %s\n", addr)
+	g.Printer.Printf("IN SYNC WITH %s\n", addr)
 }
 
 // PrintUpdateRoute prints the DSDV update message
 func (g *Gossiper) PrintUpdateRoute(origin, addr string) {
-	fmt.Printf("DSDV %s %s\n", origin, addr)
+	g.Printer.Printf("DSDV %s %s\n", origin, addr)
 }
 
 // PrintPrivateMessage prints the private message to destination host
 func (g *Gossiper) PrintPrivateMessage(pm u.PrivateMessage) {
-	fmt.Printf("PRIVATE origin %s hop-limit %d contents %s\n",
+	g.Printer.Printf("PRIVATE origin %s hop-limit %d contents %s\n",
 		pm.Origin, pm.HopLimit, pm.Text)
 }

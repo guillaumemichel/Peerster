@@ -81,7 +81,7 @@ func (g *Gossiper) BuildStatusPacket() u.StatusPacket {
 }
 
 // SendMessage : sends a client message to the gossiper
-func (g *Gossiper) SendMessage(text string) {
+func (g *Gossiper) SendMessage(text, dest string) {
 
 	if text == "" {
 		fmt.Println("Error: message required!")
@@ -98,6 +98,9 @@ func (g *Gossiper) SendMessage(text string) {
 	}
 
 	packetToSend := u.Message{Text: text}
+	if dest != "" {
+		packetToSend.Destination = &dest
+	}
 
 	// serializing the packet to send
 	bytesToSend := u.ProtobufMessage(&packetToSend)

@@ -20,10 +20,14 @@ func (g *Gossiper) GetRandPeer() *net.UDPAddr {
 	return &target
 }
 
-// GetPeers : return a list of string all peer addresses
-func (g *Gossiper) GetPeers() []string {
+// GetNewPeers : return a list of string all new peer addresses
+func (g *Gossiper) GetNewPeers(c int) []string {
+	peers := g.Peers
+	if c >= len(peers) {
+		return nil
+	}
 	var list []string
-	for _, v := range g.Peers {
+	for _, v := range peers[c:] {
 		list = append(list, v.String())
 	}
 	return list
@@ -51,7 +55,7 @@ func (g *Gossiper) GetLastPeers(last string) []string {
 
 // GetDestinations return the last destinations not sync yet
 func (g *Gossiper) GetDestinations(c uint32) []string {
-	if c == u.SyncMapCount(g.Routes) {
+	if c >= u.SyncMapCount(g.Routes) {
 		return nil
 	}
 	var dests []string
@@ -66,10 +70,11 @@ func (g *Gossiper) GetDestinations(c uint32) []string {
 
 // GetPrivateMessage returns the pms with index higher than the parameter
 func (g *Gossiper) GetPrivateMessage(c int) []u.PrivateMessage {
-	if c <= len(g.PrivateMsg) {
+	prvtmsg := g.PrivateMsg
+	if c >= len(prvtmsg) {
 		return nil
 	}
-	return g.PrivateMsg[c:]
+	return prvtmsg[c:]
 }
 
 // AddPeer : adds the given peer to peers list if not already in it
@@ -211,10 +216,14 @@ func (g *Gossiper) GetPeerID() string {
 }
 
 // GetNewMessages : return the new unread messages
-func (g *Gossiper) GetNewMessages() []u.RumorMessage {
+func (g *Gossiper) GetNewMessages(c int) []u.RumorMessage {
 	g.NewMessages.Mutex.Lock()
 	defer g.NewMessages.Mutex.Unlock()
-	return g.NewMessages.Messages
+	messages := g.NewMessages.Messages
+	if c >= len(messages) {
+		return nil
+	}
+	return messages[c:]
 	/*
 			var out []u.RumorMessage
 		// get the new messages to out

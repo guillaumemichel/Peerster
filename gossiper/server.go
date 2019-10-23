@@ -11,29 +11,38 @@ import (
 
 // StartServer : starts a server
 func (g *Gossiper) StartServer() {
-	// Somewhere, maybe even in a different package you create.
 
 	getLatestRumorMessagesHandler := func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			msgList := g.GetNewMessages()
-			msgListJSON, _ := json.Marshal(msgList)
-			// error handling, etc...
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			w.Write(msgListJSON)
+			s := r.FormValue("number")
+			n, _ := strconv.Atoi(s)
+
+			msgList := g.GetNewMessages(n)
+			if msgList != nil {
+				msgListJSON, _ := json.Marshal(msgList)
+				// error handling, etc...
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(msgListJSON)
+			}
 		}
 	}
 
 	getPeers := func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			list := g.GetPeers()
-			msgListJSON, _ := json.Marshal(list)
-			// error handling, etc...
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			w.Write(msgListJSON)
+			s := r.FormValue("number")
+			n, _ := strconv.Atoi(s)
+
+			list := g.GetNewPeers(n)
+			if list != nil {
+				msgListJSON, _ := json.Marshal(list)
+				// error handling, etc...
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(msgListJSON)
+			}
 		}
 	}
 
@@ -42,7 +51,8 @@ func (g *Gossiper) StartServer() {
 		switch r.Method {
 		case "POST":
 			msg := r.FormValue("message")
-			g.SendMessage(msg)
+			dst := r.FormValue("dest")
+			g.SendMessage(msg, dst)
 		}
 	}
 
@@ -74,7 +84,7 @@ func (g *Gossiper) StartServer() {
 		switch r.Method {
 		case "GET":
 			// load last dest received
-			s := r.FormValue("last_dest")
+			s := r.FormValue("dest_count")
 			n, _ := strconv.Atoi(s)
 			// get the dest added after last
 			dests := g.GetDestinations(uint32(n))

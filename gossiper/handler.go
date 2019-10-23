@@ -64,7 +64,7 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 	}
 	g.PendingACKs.Store(*pendingACKStr, values)
 
-	fmt.Printf("MONGERING with %s\n", targetStr)
+	g.Printer.Printf("MONGERING with %s\n", targetStr)
 	// send packet
 	g.GossipConn.WriteToUDP(packet, &addr)
 
@@ -276,6 +276,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				}
 			} else { // private message
 				pm := g.CreatePrivateMessage(m, *rcvMsg.Destination)
+				g.PrivateMsg = append(g.PrivateMsg, pm)
 				g.DealWithPrivateMessage(pm)
 			}
 		}
