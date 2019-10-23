@@ -41,5 +41,5 @@ const SharedFolderPath string = "./_SharedFiles"
 // SharedFolderFileMode is file mode for the shared folder
 const SharedFolderFileMode os.FileMode = 644
 
-// ChunkSize size of a file chunk to send
-const ChunkSize int = 8192
+// ChunkSize size of a file chunk to send (8KB)
+const ChunkSize int = 8192 // 8 KB

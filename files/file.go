@@ -9,6 +9,22 @@ import (
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
+// LoadSharedFiles Load all files from _SHAREDFILES and return them, in order
+// to store them in the gossiper
+func LoadSharedFiles() []u.FileStruct {
+	// TODO
+	return make([]u.FileStruct, 0)
+}
+
+// LoadFile get a file from the filename
+func LoadFile(filename string) *os.File {
+	f, err := os.Open(filename)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return f
+}
+
 // ScanFile scans a file and split it into chunks
 func ScanFile(f os.File) (*u.FileStruct, map[u.ShaHash]*u.FileChunk, error) {
 	// get basic file infos

@@ -44,10 +44,12 @@ type StatusPacket struct {
 
 // GossipPacket : default gossip packet used by the Peerster
 type GossipPacket struct {
-	Simple  *SimpleMessage
-	Rumor   *RumorMessage
-	Status  *StatusPacket
-	Private *PrivateMessage
+	Simple      *SimpleMessage
+	Rumor       *RumorMessage
+	Status      *StatusPacket
+	Private     *PrivateMessage
+	DataRequest *DataRequest
+	DataReply   *DataReply
 }
 
 // PrivateMessage : private message structure
@@ -109,4 +111,21 @@ type FileChunk struct {
 	Number int
 	Hash   ShaHash
 	Data   []byte
+}
+
+// DataRequest data request packets
+type DataRequest struct {
+	Origin      string
+	Destination string
+	HopLimit    uint32
+	HashValue   []byte
+}
+
+// DataReply data reply packets
+type DataReply struct {
+	Origin      string
+	Destination string
+	HopLimit    uint32
+	HashValue   []byte
+	Data        []byte
 }
