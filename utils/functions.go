@@ -7,6 +7,7 @@ import (
 	"math/big"
 	r "math/rand"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -183,6 +184,15 @@ func SyncMapCount(sm *sync.Map) uint32 {
 	}
 	sm.Range(f)
 	return count
+}
+
+// LoadFile get a file from the filename
+func LoadFile(filename string) *os.File {
+	f, err := os.Open(filename)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return f
 }
 
 /*

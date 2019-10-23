@@ -11,6 +11,17 @@ import (
 
 func main() {
 
+	// make sure that the shared files folder exists, and create it if it does
+	// not exist yet
+	if _, err := os.Stat(u.SharedFolderPath); err != nil {
+		if os.IsNotExist(err) {
+			os.Mkdir(u.SharedFolderPath, u.SharedFolderFileMode)
+		} else {
+			fmt.Println("Error: cannot open", u.SharedFolderPath)
+		}
+	}
+
+	// flags of the peerster command
 	UIPort := flag.String("UIPort", u.DefaultUIPort, "port for the UI client")
 	gossipAddr := flag.String("gossipAddr", "127.0.0.1:5000",
 		"ip:port for the gossiper")
@@ -29,11 +40,13 @@ func main() {
 		"send route rumors. 0 (default) means disable sending route rumors.")
 
 	flag.Parse()
+	// help message
 	flag.Usage = func() {
 		fmt.Printf("Usage of %s:\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 
+	// start new gossiper
 	g.StartNewGossiper(gossipAddr, name, UIPort, GUIPort, peersInput,
 		*simple, *rtimer, *antiE)
 }

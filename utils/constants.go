@@ -1,5 +1,7 @@
 package utils
 
+import "os"
+
 // SimpleModeStr : string containing the name for gossiper simple mode
 const SimpleModeStr string = "simple"
 
@@ -32,3 +34,12 @@ const PrivateMessageID uint32 = 0
 
 // DefaultHopLimit default hop limit for private messages
 const DefaultHopLimit uint32 = 10
+
+// SharedFolderPath path to the gossiper's shared folder
+const SharedFolderPath string = "./_SharedFiles"
+
+// SharedFolderFileMode is file mode for the shared folder
+const SharedFolderFileMode os.FileMode = 644
+
+// ChunkSize size of a file chunk to send
+const ChunkSize int = 8192

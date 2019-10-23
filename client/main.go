@@ -25,6 +25,7 @@ func main() {
 	msg := flag.String("msg", "", "message to be sent")
 	dest := flag.String("dest", "", "destination for the private message; "+
 		"can be omitted")
+	file := flag.String("file", "", "file to be indexed by the gossiper")
 
 	flag.Parse()
 	flag.Usage = func() {
@@ -56,16 +57,11 @@ func main() {
 		fmt.Println("Error: ", err)
 	}
 
-	var dst string
-	if dest == nil {
-		dst = ""
-	} else {
-		dst = *dest
-	}
-
+	// create the packet to send
 	packetToSend := u.Message{
 		Text:        *msg,
-		Destination: &dst,
+		Destination: dest,
+		File:        file,
 	}
 
 	// serializing the packet to send

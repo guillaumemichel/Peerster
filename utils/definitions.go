@@ -1,6 +1,9 @@
 package utils
 
-import "sync"
+import (
+	"crypto/sha256"
+	"sync"
+)
 
 // Message : simple message type that client send to gossiper
 type Message struct {
@@ -86,4 +89,24 @@ type AckValues struct {
 type SyncNewMessages struct {
 	sync.Mutex
 	Messages []RumorMessage
+}
+
+// ShaHash is the struct of hash Sha256
+type ShaHash [sha256.Size]byte
+
+// FileStruct file structure containing file's metadata stored on the gossiper
+type FileStruct struct {
+	Name         string
+	MetafileHash ShaHash
+	Size         int64
+	Metafile     []byte
+	NChunks      int
+}
+
+// FileChunk one chunk of data of a file
+type FileChunk struct {
+	File   *FileStruct
+	Number int
+	Hash   ShaHash
+	Data   []byte
 }
