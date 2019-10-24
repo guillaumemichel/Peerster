@@ -139,6 +139,12 @@ func TestMessageType(p *GossipPacket) bool {
 	if p.Private != nil {
 		n++
 	}
+	if p.DataReply != nil {
+		n++
+	}
+	if p.DataRequest != nil {
+		n++
+	}
 	if n > 1 {
 		fmt.Println("Error: the received GossipPacket contains multiple",
 			"messages")

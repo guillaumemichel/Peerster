@@ -4,8 +4,24 @@ import (
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
-// LookForFile look if gossiper has the file
-func (g *Gossiper) LookForFile(u.ShaHash) *u.FileStruct {
-	// TODO
+// LookForMetahash look if gossiper has the file with the same metahash
+func (g *Gossiper) LookForMetahash(target u.ShaHash) *u.FileStruct {
+	// iterate over the filestructs of g
+	for _, v := range g.FileStructs {
+		// if same metahash, return the file
+		if v.MetafileHash == target {
+			return &v
+		}
+	}
 	return nil
+}
+
+// HandleDataReq handles data requests that are received
+func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
+
+}
+
+// HandleDataReply handles data replies that are received
+func (g *Gossiper) HandleDataReply(drep u.DataReply) {
+
 }

@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"os"
 
 	u "github.com/guillaumemichel/Peerster/utils"
@@ -12,8 +14,26 @@ import (
 // LoadSharedFiles Load all files from _SHAREDFILES and return them, in order
 // to store them in the gossiper
 func LoadSharedFiles() []u.FileStruct {
-	// TODO
-	return make([]u.FileStruct, 0)
+	// read the shared files directory
+	files, err := ioutil.ReadDir(u.SharedFolderPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// we assume that there is no subdirectory
+	var fileStructs []u.FileStruct
+	// iterate over the files in this directory
+	for _, f := range files {
+		// create the filestruct from the filename
+		fs, err := ScanFile(LoadFile(f.Name()))
+		if err != nil {
+			log.Fatal(err)
+			return nil
+		}
+		fileStructs = append(fileStructs, *fs)
+	}
+
+	return fileStructs
 }
 
 // LoadFile get a file from the filename
@@ -26,7 +46,7 @@ func LoadFile(filename string) *os.File {
 }
 
 // ScanFile scans a file and split it into chunks
-func ScanFile(f os.File) (*u.FileStruct, map[u.ShaHash]*u.FileChunk, error) {
+func ScanFile(f *os.File) (*u.FileStruct, error) {
 	// get basic file infos
 	fstat, _ := f.Stat()
 
@@ -47,7 +67,7 @@ func ScanFile(f os.File) (*u.FileStruct, map[u.ShaHash]*u.FileChunk, error) {
 		if err != nil {
 			if err != io.EOF {
 				fmt.Println(err)
-				return nil, nil, err
+				return nil, err
 			}
 			// end of file, last chunk
 			break
@@ -80,6 +100,7 @@ func ScanFile(f os.File) (*u.FileStruct, map[u.ShaHash]*u.FileChunk, error) {
 	filestruct.Metafile = metafile
 	filestruct.MetafileHash = sha256.Sum256(metafile)
 	filestruct.NChunks = chunkCount
+	filestruct.Chunks = chunks
 
-	return &filestruct, chunks, nil
+	return &filestruct, nil
 }

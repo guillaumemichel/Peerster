@@ -1,6 +1,7 @@
 package gossiper
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
@@ -110,4 +111,43 @@ func (g *Gossiper) SendMessage(text, dest string) {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+// RequestFile create and send a request for a file to a destination
+func (g *Gossiper) RequestFile(dest, hash string) {
+	// translate the string hash to byte array
+	hashByte, err := hex.DecodeString(hash)
+	if err != nil {
+		g.Printer.Println("Error: invalid hash")
+	}
+	// create the data request
+	req := u.DataRequest{
+		Origin:      g.Name,
+		Destination: dest,
+		HopLimit:    u.DefaultHopLimit,
+		HashValue:   hashByte,
+	}
+	// create the new file status
+	fstatus := u.FileRequestStatus{
+		Destination:  dest,
+		MetafileHash: hashByte,
+		MetafileOK:   false,
+	}
+	g.FileStatus = append(g.FileStatus, &fstatus)
+
+	// define next hop
+	v, ok := g.Routes.Load(dest)
+	if !ok {
+		g.Printer.Println("Error: no route to", dest)
+	}
+	addr, err := net.ResolveUDPAddr("udp4", v.(string))
+	if err != nil {
+		g.Printer.Println("Error: cannot resolve udp address:", v.(string))
+	}
+
+	// protobuf and send the packet
+	gp := u.GossipPacket{DataRequest: &req}
+	packet := u.ProtobufGossip(&gp)
+	g.GossipConn.WriteToUDP(packet, addr)
+
 }

@@ -96,6 +96,14 @@ type SyncNewMessages struct {
 // ShaHash is the struct of hash Sha256
 type ShaHash [sha256.Size]byte
 
+// FileChunk one chunk of data of a file
+type FileChunk struct {
+	File   *FileStruct
+	Number int
+	Hash   ShaHash
+	Data   []byte
+}
+
 // FileStruct file structure containing file's metadata stored on the gossiper
 type FileStruct struct {
 	Name         string
@@ -103,14 +111,7 @@ type FileStruct struct {
 	Size         int64
 	Metafile     []byte
 	NChunks      int
-}
-
-// FileChunk one chunk of data of a file
-type FileChunk struct {
-	File   *FileStruct
-	Number int
-	Hash   ShaHash
-	Data   []byte
+	Chunks       map[ShaHash]*FileChunk
 }
 
 // DataRequest data request packets
@@ -128,4 +129,13 @@ type DataReply struct {
 	HopLimit    uint32
 	HashValue   []byte
 	Data        []byte
+}
+
+// FileRequestStatus status for a file request
+type FileRequestStatus struct {
+	sync.Mutex
+	Destination   string
+	MetafileHash  []byte
+	MetafileOK    bool
+	PendingChunks []ShaHash
 }

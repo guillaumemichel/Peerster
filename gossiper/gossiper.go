@@ -13,24 +13,25 @@ import (
 
 // Gossiper : a gossiper
 type Gossiper struct {
-	Name         string
-	GossipAddr   *net.UDPAddr
-	ClientAddr   *net.UDPAddr
-	GossipConn   *net.UDPConn
-	ClientConn   *net.UDPConn
-	GUIPort      int
-	Peers        []net.UDPAddr
-	BufSize      int
-	Mode         string
-	PendingACKs  *sync.Map // map[u.AckIdentifier]u.AckValues
-	WantList     *sync.Map // map[string]uint32
-	RumorHistory *sync.Map // map[string][]u.HistoryMessage
-	AntiEntropy  int
-	NewMessages  *u.SyncNewMessages
-	Routes       *sync.Map // map[string]string
-	RTimer       int
-	PrivateMsg   []u.PrivateMessage
-	Printer      *log.Logger
+	Name         string                 // name of the gossiper
+	GossipAddr   *net.UDPAddr           // address of the gossip port
+	ClientAddr   *net.UDPAddr           // address of the client port (udp4)
+	GossipConn   *net.UDPConn           // connection for gossip
+	ClientConn   *net.UDPConn           // ui connection
+	GUIPort      int                    // gui port
+	Peers        []net.UDPAddr          // list of direct peers (neighbors)
+	Mode         string                 // mode of the gossiper (simple / rumor)
+	PendingACKs  *sync.Map              // map[u.AckIdentifier]u.AckValues
+	WantList     *sync.Map              // map[string]uint32
+	RumorHistory *sync.Map              // map[string][]u.HistoryMessage
+	AntiEntropy  int                    // anti entropy timeout value
+	NewMessages  *u.SyncNewMessages     // slice containing all rumors
+	Routes       *sync.Map              // map[string]string string of udp4
+	RTimer       int                    // routing timer
+	PrivateMsg   []u.PrivateMessage     // slice containing all private messages
+	Printer      *log.Logger            // printer avoid concurrent stdout write
+	FileStructs  []u.FileStruct         // known files
+	FileStatus   []*u.FileRequestStatus // status to file requests
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
@@ -74,6 +75,8 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	var status sync.Map
 	var routes sync.Map
 	var pm []u.PrivateMessage
+	var fstruct []u.FileStruct
+	var fstatus []*u.FileRequestStatus
 
 	var newMessages []u.RumorMessage
 	nm := u.SyncNewMessages{Messages: newMessages}
@@ -81,7 +84,6 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	if *name == "" {
 		*name = "Gossiper"
 	}
-
 	status.Store(*name, uint32(1))
 	printer := log.New(os.Stdout, "", 0)
 
@@ -92,7 +94,6 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		GossipConn:   gossConn,
 		ClientConn:   cliConn,
 		Peers:        *peers,
-		BufSize:      u.BufferSize,
 		Mode:         mode,
 		PendingACKs:  &acks,
 		WantList:     &status,
@@ -104,12 +105,14 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		RTimer:       rtimer,
 		PrivateMsg:   pm,
 		Printer:      printer,
+		FileStructs:  fstruct,
+		FileStatus:   fstatus,
 	}
 }
 
 // Listen : listen for new messages from clients
 func (g *Gossiper) Listen(udpConn *net.UDPConn) {
-	buf := make([]byte, g.BufSize)
+	buf := make([]byte, u.BufferSize)
 
 	for {
 		// read new message

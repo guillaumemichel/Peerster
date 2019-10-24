@@ -117,6 +117,28 @@ func (g *Gossiper) SendRumorToRandomWithoutPacketNorInitial(
 	g.SendRumorToRandom(packet, rumor, ref)
 }
 
+// RoutePacket routes private messages, data requests and replies to next hop
+func (g *Gossiper) RoutePacket(dst string, gp u.GossipPacket) {
+	// load the next hop to destination
+	v, ok := g.Routes.Load(dst)
+	if !ok {
+		fmt.Println("No route to", dst)
+		return
+	}
+
+	// resolve the udp address of the next hop
+	addr, err := net.ResolveUDPAddr("udp4", v.(string))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	// protobuf the packet
+	packet := u.ProtobufGossip(&gp)
+
+	// send the packet
+	g.GossipConn.WriteToUDP(packet, addr)
+}
+
 // DealWithPrivateMessage deals with private messages
 func (g *Gossiper) DealWithPrivateMessage(pm u.PrivateMessage) {
 	dst := pm.Destination
@@ -130,25 +152,40 @@ func (g *Gossiper) DealWithPrivateMessage(pm u.PrivateMessage) {
 		pm.HopLimit--
 		// if positive forward it, otherwise drop it
 		if pm.HopLimit > 0 {
-			// load the next hop to destination
-			v, ok := g.Routes.Load(dst)
-			if !ok {
-				fmt.Println("No route to", dst)
-				return
-			}
-
-			// resolve the udp address of the next hop
-			addr, err := net.ResolveUDPAddr("udp4", v.(string))
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			// build the gossip packet and protobuf it
 			gp := u.GossipPacket{Private: &pm}
-			packet := u.ProtobufGossip(&gp)
+			g.RoutePacket(dst, gp)
+		}
+	}
+}
 
-			// send the packet
-			g.GossipConn.WriteToUDP(packet, addr)
+// RouteDataReq route data request to next hop
+func (g *Gossiper) RouteDataReq(dreq u.DataRequest) {
+	dst := dreq.Destination
+	if dst == g.Name {
+		g.HandleDataReq(dreq)
+	} else {
+		// decrease the hop limit
+		dreq.HopLimit--
+		// if positive forward it, otherwise drop it
+		if dreq.HopLimit > 0 {
+			gp := u.GossipPacket{DataRequest: &dreq}
+			g.RoutePacket(dst, gp)
+		}
+	}
+}
+
+// RouteDataReply route data reply to next hop
+func (g *Gossiper) RouteDataReply(drep u.DataReply) {
+	dst := drep.Destination
+	if dst == g.Name {
+		g.HandleDataReply(drep)
+	} else {
+		// decrease the hop limit
+		drep.HopLimit--
+		// if positive forward it, otherwise drop it
+		if drep.HopLimit > 0 {
+			gp := u.GossipPacket{DataReply: &drep}
+			g.RoutePacket(dst, gp)
 		}
 	}
 }
@@ -190,6 +227,12 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			} else if rcvMsg.Private != nil { // PrivateMessage received
 				fmt.Println("Warning: gossiper running in Simple mode",
 					"and received a Private message, discarding it")
+			} else if rcvMsg.DataRequest != nil {
+				fmt.Println("Warning: gossiper running in Simple mode",
+					"and received a Data Request, discarding it")
+			} else if rcvMsg.DataReply != nil {
+				fmt.Println("Warning: gossiper running in Simple mode",
+					"and received a Data Reply, discarding it")
 			} else {
 				fmt.Println("Error: unrecognized message")
 			}
@@ -237,7 +280,12 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			} else if rcvMsg.Private != nil { // PrivateMessage received
 				pm := rcvMsg.Private
 				g.DealWithPrivateMessage(*pm)
-
+			} else if rcvMsg.DataRequest != nil {
+				// deals with data request
+				dr := rcvMsg.DataRequest
+				g.RouteDataReq(*dr)
+			} else if rcvMsg.DataReply != nil {
+				// TODO manage data reply
 			} else {
 				fmt.Println("Error: unrecognized message")
 			}
