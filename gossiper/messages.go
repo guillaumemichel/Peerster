@@ -114,7 +114,7 @@ func (g *Gossiper) SendMessage(text, dest string) {
 }
 
 // RequestFile create and send a request for a file to a destination
-func (g *Gossiper) RequestFile(dest, hash string) {
+func (g *Gossiper) RequestFile(name, dest, hash string) {
 	// translate the string hash to byte array
 	hashByte, err := hex.DecodeString(hash)
 	if err != nil {
@@ -127,27 +127,39 @@ func (g *Gossiper) RequestFile(dest, hash string) {
 		HopLimit:    u.DefaultHopLimit,
 		HashValue:   hashByte,
 	}
+
+	var h u.ShaHash
+	copy(h[:], hashByte)
+	data := make([][]byte, 0)
 	// create the new file status
 	fstatus := u.FileRequestStatus{
+		Name:         name,
 		Destination:  dest,
-		MetafileHash: hashByte,
+		MetafileHash: h,
 		MetafileOK:   false,
+		ChunkCount:   0,
+		Data:         data,
 	}
 	g.FileStatus = append(g.FileStatus, &fstatus)
 
-	// define next hop
-	v, ok := g.Routes.Load(dest)
-	if !ok {
-		g.Printer.Println("Error: no route to", dest)
-	}
-	addr, err := net.ResolveUDPAddr("udp4", v.(string))
-	if err != nil {
-		g.Printer.Println("Error: cannot resolve udp address:", v.(string))
-	}
+	// print downloading metafile message
+	g.PrintDownloadMetaFile(dest, name)
 
-	// protobuf and send the packet
-	gp := u.GossipPacket{DataRequest: &req}
-	packet := u.ProtobufGossip(&gp)
-	g.GossipConn.WriteToUDP(packet, addr)
+	g.RouteDataReq(req)
+}
 
+// RequestNextChunk request the next chunk to dest with hash
+func (g *Gossiper) RequestNextChunk(fstatus *u.FileRequestStatus) {
+	// create the new file request
+	req := u.DataRequest{
+		Origin:      g.Name,
+		Destination: fstatus.Destination,
+		HopLimit:    u.DefaultHopLimit,
+		HashValue:   fstatus.PendingChunks[fstatus.ChunkCount][:],
+	}
+	// print downloading chunk message
+	g.PrintDownloadChunk(fstatus.Destination, fstatus.Name,
+		fstatus.ChunkCount+1)
+	// route the packet
+	g.RouteDataReq(req)
 }

@@ -1,6 +1,7 @@
 package gossiper
 
 import (
+	f "github.com/guillaumemichel/Peerster/files"
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
@@ -55,5 +56,50 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 
 // HandleDataReply handles data replies that are received
 func (g *Gossiper) HandleDataReply(drep u.DataReply) {
+	f.CheckDownloadDir()
+	var h u.ShaHash
+	copy(h[:], drep.HashValue)
+
+	for _, v := range g.FileStatus {
+		// a metafile we were waiting for is here !
+		if !v.MetafileOK && h == v.MetafileHash {
+			// ack the metafile
+			v.MetafileOK = true
+			v.PendingChunks = make([]u.ShaHash, 0)
+			for i := 0; i < len(drep.Data); i += u.ShaSize {
+				// add all hashes to pending chunks of v
+				copy(h[:], drep.Data[i:i+u.ShaSize])
+				v.PendingChunks = append(v.PendingChunks, h)
+			}
+			// request first chunk
+			g.RequestNextChunk(v)
+			return
+		}
+		if v.MetafileOK { // if metafile ok, we look for a chunk
+			// we iterate over all pending chunks
+			for _, w := range v.PendingChunks {
+				// if the hash matches
+				if h == w {
+					// append data to the one we already have
+					v.Data = append(v.Data, drep.Data)
+					// increase chunk counter
+					v.ChunkCount++
+					if v.ChunkCount == len(v.PendingChunks) {
+						// success rebuild the file
+						g.ReconstructFile(v)
+					} else {
+						// request next chunk
+						g.RequestNextChunk(v)
+					}
+					return
+				}
+			}
+		}
+	}
+	g.Printer.Println("Warning: received data reply that I don't want!")
+}
+
+// ReconstructFile reconstruct a file after received all the chunks
+func (g *Gossiper) ReconstructFile(fstatus *u.FileRequestStatus) {
 
 }

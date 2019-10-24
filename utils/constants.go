@@ -1,6 +1,9 @@
 package utils
 
-import "os"
+import (
+	"crypto/sha256"
+	"os"
+)
 
 // SimpleModeStr : string containing the name for gossiper simple mode
 const SimpleModeStr string = "simple"
@@ -38,8 +41,14 @@ const DefaultHopLimit uint32 = 10
 // SharedFolderPath path to the gossiper's shared folder
 const SharedFolderPath string = "./_SharedFiles"
 
-// SharedFolderFileMode is file mode for the shared folder
-const SharedFolderFileMode os.FileMode = 644
+// DownloadsFolderPath path to the gossiper's downloads folder
+const DownloadsFolderPath string = "./_Downloads"
+
+// Filemode is file mode for the shared and download folders
+const Filemode os.FileMode = 644
 
 // ChunkSize size of a file chunk to send (8KB)
 const ChunkSize int = 8192 // 8 KB
+
+// ShaSize length of a sha hash in bytes
+const ShaSize int = sha256.Size

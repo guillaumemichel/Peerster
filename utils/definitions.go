@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"crypto/sha256"
 	"sync"
 )
 
@@ -94,7 +93,7 @@ type SyncNewMessages struct {
 }
 
 // ShaHash is the struct of hash Sha256
-type ShaHash [sha256.Size]byte
+type ShaHash [ShaSize]byte
 
 // FileChunk one chunk of data of a file
 type FileChunk struct {
@@ -134,8 +133,11 @@ type DataReply struct {
 // FileRequestStatus status for a file request
 type FileRequestStatus struct {
 	sync.Mutex
+	Name          string
 	Destination   string
-	MetafileHash  []byte
+	MetafileHash  ShaHash
 	MetafileOK    bool
 	PendingChunks []ShaHash
+	ChunkCount    int
+	Data          [][]byte
 }

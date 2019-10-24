@@ -80,3 +80,18 @@ func (g *Gossiper) PrintPrivateMessage(pm u.PrivateMessage) {
 	g.Printer.Printf("PRIVATE origin %s hop-limit %d contents %s\n",
 		pm.Origin, pm.HopLimit, pm.Text)
 }
+
+// PrintDownloadMetaFile prints downloading metafile
+func (g *Gossiper) PrintDownloadMetaFile(dest, name string) {
+	g.Printer.Printf("DOWNLOADING metafile of %s from %s\n", name, dest)
+}
+
+// PrintDownloadChunk prints downloading chunk number n message
+func (g *Gossiper) PrintDownloadChunk(dest, name string, n int) {
+	g.Printer.Printf("DOWNLOADING %s chunk %d from %s\n", name, n, dest)
+}
+
+// PrintReconstructFile print reconstructed file message
+func (g *Gossiper) PrintReconstructFile(name string) {
+	g.Printer.Printf("RECONSTRUCTED file %s\n", name)
+}

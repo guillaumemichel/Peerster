@@ -104,3 +104,27 @@ func ScanFile(f *os.File) (*u.FileStruct, error) {
 
 	return &filestruct, nil
 }
+
+func checkDir(dir string) {
+	// make sure that the shared files folder exists, and create it if it does
+	// not exist yet
+	if _, err := os.Stat(dir); err != nil {
+		if os.IsNotExist(err) {
+			os.Mkdir(u.SharedFolderPath, u.Filemode)
+		} else {
+			fmt.Println("Error: cannot open", dir)
+		}
+	}
+}
+
+// CheckDownloadDir check if download directory exists, and create it if it does
+// not exist
+func CheckDownloadDir() {
+	checkDir(u.DownloadsFolderPath)
+}
+
+// CheckSharedDir check if shared files directory exists, and create it if it
+// does not exist
+func CheckSharedDir() {
+	checkDir(u.SharedFolderPath)
+}

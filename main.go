@@ -5,21 +5,16 @@ import (
 	"fmt"
 	"os"
 
+	f "github.com/guillaumemichel/Peerster/files"
 	g "github.com/guillaumemichel/Peerster/gossiper"
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
 func main() {
 
-	// make sure that the shared files folder exists, and create it if it does
-	// not exist yet
-	if _, err := os.Stat(u.SharedFolderPath); err != nil {
-		if os.IsNotExist(err) {
-			os.Mkdir(u.SharedFolderPath, u.SharedFolderFileMode)
-		} else {
-			fmt.Println("Error: cannot open", u.SharedFolderPath)
-		}
-	}
+	// create the directories shared folder and downloads
+	f.CheckSharedDir()
+	f.CheckDownloadDir()
 
 	// flags of the peerster command
 	UIPort := flag.String("UIPort", u.DefaultUIPort, "port for the UI client")
