@@ -95,3 +95,15 @@ func (g *Gossiper) PrintDownloadChunk(dest, name string, n int) {
 func (g *Gossiper) PrintReconstructFile(name string) {
 	g.Printer.Printf("RECONSTRUCTED file %s\n", name)
 }
+
+// PrintUnknownMode unknown mode message
+func (g *Gossiper) PrintUnknownMode() {
+	g.Printer.Println("Error: Unknown gossiper mode!")
+}
+
+// PrintExpectedRumorMode print expected rumor mode message if in simple mode
+// and complicated message is received
+func (g *Gossiper) PrintExpectedRumorMode(message string) {
+	g.Printer.Println("Warning: gossiper in simple mode received a", message,
+		", discarding it")
+}

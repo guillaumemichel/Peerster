@@ -121,3 +121,16 @@ func (g *Gossiper) ReconstructFile(fstatus *u.FileRequestStatus) {
 	g.FileStructs = append(g.FileStructs, file)
 	file.Size = f.WriteFileToDownloads(&file)
 }
+
+// SendFileTo sends a file to dest
+func (g *Gossiper) SendFileTo(dest, file string) {
+	//resolve file
+	hash := make([]byte, 0)
+	dreq := u.DataRequest{
+		Origin:      dest,
+		Destination: g.Name,
+		HopLimit:    u.DefaultHopLimit,
+		HashValue:   hash,
+	}
+	g.HandleDataReq(dreq)
+}

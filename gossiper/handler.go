@@ -295,6 +295,69 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 
 // HandleMessage : handles a message on arrival
 func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
+	// unprotobuf message from the client
+	rcvMsg, ok := u.UnprotobufMessage(rcvBytes)
+	if g.ReceiveOK(ok, rcvBytes) {
+		if g.Mode != u.RumorModeStr && g.Mode != u.SimpleModeStr {
+			g.PrintUnknownMode()
+		}
+		if rcvMsg.Text != "" && rcvMsg.Destination == nil {
+			// rumor message
+
+			// print the client message status
+			g.PrintMessageClient(rcvMsg.Text)
+			if g.Mode == u.SimpleModeStr { // simple mode
+				// creates a SimpleMessage in GossipPacket to be broadcasted
+				sm := g.CreateSimpleMessage(g.Name, rcvMsg.Text)
+				gPacket := u.GossipPacket{Simple: &sm}
+				// protobuf the message
+				packet := u.ProtobufGossip(&gPacket)
+				// broadcast the message to all peers
+				g.Broadcast(packet, nil)
+			} else { // rumor mode
+				// creates a RumorMessage in GossipPacket to be broadcasted
+				rumor := g.CreateRumorMessage(rcvMsg.Text)
+
+				//write message to history
+				if g.WriteRumorToHistory(rumor) {
+					g.SendRumorToRandomWithoutPacketNorInitial(rumor)
+				}
+			}
+
+		} else if rcvMsg.Text != "" && rcvMsg.Destination != nil {
+			// private message
+
+			if g.Mode == u.RumorModeStr {
+				// create private message
+				pm := g.CreatePrivateMessage(rcvMsg.Text, *rcvMsg.Destination)
+				// append the private message to the list of pms
+				g.PrivateMsg = append(g.PrivateMsg, pm)
+				// deals with it!
+				g.DealWithPrivateMessage(pm)
+			} else {
+				g.PrintExpectedRumorMode("private message")
+			}
+
+		} else if rcvMsg.Text == "" && rcvMsg.Destination != nil &&
+			rcvMsg.File != nil && rcvMsg.Request == nil {
+			// send file
+
+		} else if rcvMsg.Text == "" && rcvMsg.Destination != nil &&
+			rcvMsg.File != nil && rcvMsg.Request != nil {
+			// file request
+
+			if g.Mode == u.RumorModeStr {
+				// create a file request and sends it
+				g.RequestFile(*rcvMsg.File, *rcvMsg.Destination, *rcvMsg.Request)
+			} else {
+				g.PrintExpectedRumorMode("file request")
+			}
+		}
+	}
+}
+
+// HandleMessage2 : handles a message on arrival
+func (g *Gossiper) HandleMessage2(rcvBytes []byte, udpAddr *net.UDPAddr) {
 
 	// message from the client
 	rcvMsg, ok := u.UnprotobufMessage(rcvBytes)

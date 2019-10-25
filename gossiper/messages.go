@@ -1,7 +1,6 @@
 package gossiper
 
 import (
-	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
@@ -116,20 +115,17 @@ func (g *Gossiper) SendMessage(text, dest string) {
 // RequestFile create and send a request for a file to a destination
 func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 	// translate the string hash to byte array
-	hashByte, err := hex.DecodeString(hash)
-	if err != nil {
-		g.Printer.Println("Error: invalid hash")
-	}
+
 	// create the data request
 	req := u.DataRequest{
 		Origin:      g.Name,
 		Destination: dest,
 		HopLimit:    u.DefaultHopLimit,
-		HashValue:   hashByte,
+		HashValue:   hash,
 	}
 
 	var h u.ShaHash
-	copy(h[:], hashByte)
+	copy(h[:], hash)
 	data := make([][]byte, 0)
 	// create the new file status
 	fstatus := u.FileRequestStatus{
