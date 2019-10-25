@@ -105,6 +105,29 @@ func ScanFile(f *os.File) (*u.FileStruct, error) {
 	return &filestruct, nil
 }
 
+// WriteFileToDownloads write a file to _Downloads folder and returns the size
+// of the created file
+func WriteFileToDownloads(fstruct *u.FileStruct) int64 {
+	// loading data
+	data := make([]byte, 0)
+	var h u.ShaHash
+	for i := 0; i < len(fstruct.Metafile); i += u.ShaSize {
+		// translate hash []byte to shahash (in h)
+		copy(h[:], fstruct.Metafile[i:i+u.ShaSize])
+		// load the data from the chunk in the same order
+		data = append(data, fstruct.Chunks[h].Data...)
+	}
+
+	// writing the file
+	err := ioutil.WriteFile(u.DownloadsFolderPath+"/"+fstruct.Name,
+		data, u.Filemode)
+	if err != nil {
+		fmt.Println(err)
+		return 0
+	}
+	return int64(len(data))
+}
+
 func checkDir(dir string) {
 	// make sure that the shared files folder exists, and create it if it does
 	// not exist yet

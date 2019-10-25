@@ -101,5 +101,23 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 
 // ReconstructFile reconstruct a file after received all the chunks
 func (g *Gossiper) ReconstructFile(fstatus *u.FileRequestStatus) {
+	// translate pending chunks to metafile
+	meta := make([]byte, 0)
+	for _, v := range fstatus.PendingChunks {
+		meta = append(meta, v[:]...)
+	}
 
+	chunkMap := make(map[u.ShaHash]*u.FileChunk)
+	// TODO fill map
+	// create he filestruct
+	file := u.FileStruct{
+		Name:         fstatus.Name,
+		MetafileHash: fstatus.MetafileHash,
+		Metafile:     meta,
+		NChunks:      fstatus.ChunkCount,
+		Chunks:       chunkMap,
+	}
+
+	g.FileStructs = append(g.FileStructs, file)
+	file.Size = f.WriteFileToDownloads(&file)
 }

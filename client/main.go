@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"log"
@@ -11,12 +12,16 @@ import (
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
-// RequireMessage : requires a message
-func RequireMessage(msg *string) {
-	if *msg == "" {
-		fmt.Println("Error: message required!")
-		os.Exit(1)
-	}
+// BadArgument print bad argument error message and exit
+func BadArgument() {
+	fmt.Println("ERROR (Bad argument combination)")
+	os.Exit(1)
+}
+
+// BadRequest prints bad request error message and exit
+func BadRequest() {
+	fmt.Println("ERROR (Unable to decode hex hash)")
+	os.Exit(1)
 }
 
 func main() {
@@ -26,6 +31,8 @@ func main() {
 	dest := flag.String("dest", "", "destination for the private message; "+
 		"can be omitted")
 	file := flag.String("file", "", "file to be indexed by the gossiper")
+	req := flag.String("request", "",
+		"request a chunk or metafile of this hash")
 
 	flag.Parse()
 	flag.Usage = func() {
@@ -33,22 +40,52 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	destination := "127.0.0.1"
-	RequireMessage(msg)
-
-	// parse destination
-	ip := net.ParseIP(destination)
-
 	// parse port
 	port, err := strconv.Atoi(*UIPort)
 	if err != nil || port < 0 || port > 65535 {
 		log.Fatalf("Error: invalid port %s", *UIPort)
 	}
+	// parse destination
+	ip := net.ParseIP(u.LocalhostAddr)
 
 	// creating destination address
 	address := net.UDPAddr{
 		IP:   ip,
 		Port: port,
+	}
+
+	var message u.Message
+	// simple message, rumor or private message
+	if *msg != "" {
+		if file != nil || req != nil {
+			// invalid argument
+			BadArgument()
+		}
+		// create the packet to send
+		message = u.Message{
+			Text:        *msg,
+			Destination: dest,
+		}
+	} else if dest != nil && file != nil && req == nil { // sending file
+		// create the send file message
+		message = u.Message{
+			Destination: dest,
+			File:        file,
+		}
+	} else if dest != nil && file != nil && req != nil { // requesting file
+		// cast string request to []byte
+		hashByte, err := hex.DecodeString(*req)
+		if err != nil {
+			BadRequest()
+		}
+		// create the request
+		message = u.Message{
+			Destination: dest,
+			File:        file,
+			Request:     &hashByte,
+		}
+	} else {
+		BadArgument()
 	}
 
 	// creating upd connection
@@ -57,15 +94,8 @@ func main() {
 		fmt.Println("Error: ", err)
 	}
 
-	// create the packet to send
-	packetToSend := u.Message{
-		Text:        *msg,
-		Destination: dest,
-		File:        file,
-	}
-
 	// serializing the packet to send
-	bytesToSend := u.ProtobufMessage(&packetToSend)
+	bytesToSend := u.ProtobufMessage(&message)
 
 	// sending the packet over udp
 	_, err = udpConn.Write(bytesToSend)

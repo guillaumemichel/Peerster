@@ -114,7 +114,7 @@ func (g *Gossiper) SendMessage(text, dest string) {
 }
 
 // RequestFile create and send a request for a file to a destination
-func (g *Gossiper) RequestFile(name, dest, hash string) {
+func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 	// translate the string hash to byte array
 	hashByte, err := hex.DecodeString(hash)
 	if err != nil {
