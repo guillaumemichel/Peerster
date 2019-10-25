@@ -115,6 +115,38 @@ func (g *Gossiper) SendMessage(text, dest string) {
 // RequestFile create and send a request for a file to a destination
 func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 	// translate the string hash to byte array
+	var h u.ShaHash
+	copy(h[:], hash)
+
+	data := make([][]byte, 0)
+
+	// look for file in the ones that were sent to me
+	statuses := g.FileStatus
+	for _, v := range statuses {
+		// -1 is for received files, look for same mfile hash
+		if v.ChunkCount == -1 && v.MetafileHash == h {
+			// set status file
+			v.ChunkCount = 0
+			v.Name = name
+			v.Destination = dest
+			v.Data = data
+
+			metafile := make([]byte, 0)
+			for _, w := range v.PendingChunks {
+				metafile = append(metafile, w[:]...)
+			}
+
+			// create data reply to fake that we got the mfile from dest
+			drep := u.DataReply{
+				Origin:      dest,
+				Destination: g.Name,
+				HashValue:   hash,
+				Data:        metafile,
+				HopLimit:    u.DefaultHopLimit,
+			}
+			g.HandleDataReply(drep)
+		}
+	}
 
 	// create the data request
 	req := u.DataRequest{
@@ -124,9 +156,6 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 		HashValue:   hash,
 	}
 
-	var h u.ShaHash
-	copy(h[:], hash)
-	data := make([][]byte, 0)
 	// create the new file status
 	fstatus := u.FileRequestStatus{
 		Name:         name,

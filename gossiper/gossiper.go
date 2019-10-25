@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	f "github.com/guillaumemichel/Peerster/files"
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
@@ -47,11 +48,13 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	// sanitize the uiport for new gossiper
 	cliPort, err := strconv.Atoi(*UIPort)
 	if err != nil || cliPort < 0 || cliPort > 65535 {
+		log.Fatalln(err, cliPort)
 		log.Fatalf("Error: invalid port %s", *UIPort)
 	}
 
 	guiPort, err := strconv.Atoi(*GUIPort)
 	if err != nil || cliPort < 0 || cliPort > 65535 {
+		log.Fatalln(err, guiPort)
 		log.Fatalf("Error: invalid port %s", *UIPort)
 	}
 
@@ -75,8 +78,9 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	var status sync.Map
 	var routes sync.Map
 	var pm []u.PrivateMessage
-	var fstruct []u.FileStruct
 	var fstatus []*u.FileRequestStatus
+
+	fstructs := f.LoadSharedFiles()
 
 	var newMessages []u.RumorMessage
 	nm := u.SyncNewMessages{Messages: newMessages}
@@ -105,7 +109,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		RTimer:       rtimer,
 		PrivateMsg:   pm,
 		Printer:      printer,
-		FileStructs:  fstruct,
+		FileStructs:  fstructs,
 		FileStatus:   fstatus,
 	}
 }

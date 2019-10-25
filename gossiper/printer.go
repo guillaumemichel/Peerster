@@ -107,3 +107,8 @@ func (g *Gossiper) PrintExpectedRumorMode(message string) {
 	g.Printer.Println("Warning: gossiper in simple mode received a", message,
 		", discarding it")
 }
+
+// PrintSentPrivateMessage print leaving private message
+func (g *Gossiper) PrintSentPrivateMessage(dest, text string) {
+	g.Printer.Printf("CLIENT MESSAGE %s dest %s\n", text, dest)
+}

@@ -285,7 +285,8 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				dr := rcvMsg.DataRequest
 				g.RouteDataReq(*dr)
 			} else if rcvMsg.DataReply != nil {
-				// TODO manage data reply
+				// deals with data reply
+				g.HandleDataReply(*rcvMsg.DataReply)
 			} else {
 				fmt.Println("Error: unrecognized message")
 			}
@@ -301,7 +302,11 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 		if g.Mode != u.RumorModeStr && g.Mode != u.SimpleModeStr {
 			g.PrintUnknownMode()
 		}
-		if rcvMsg.Text != "" && rcvMsg.Destination == nil {
+		bText := rcvMsg.Text != ""
+		bDest := rcvMsg.Destination != nil && *rcvMsg.Destination != ""
+		bFile := rcvMsg.File != nil && *rcvMsg.File != ""
+		bReq := rcvMsg.Request != nil && len(*rcvMsg.Request) > 0
+		if bText && !bDest && !bFile && !bReq {
 			// rumor message
 
 			// print the client message status
@@ -324,10 +329,11 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				}
 			}
 
-		} else if rcvMsg.Text != "" && rcvMsg.Destination != nil {
+		} else if bText && bDest && !bFile && !bReq {
 			// private message
 
 			if g.Mode == u.RumorModeStr {
+				g.PrintSentPrivateMessage(*rcvMsg.Destination, rcvMsg.Text)
 				// create private message
 				pm := g.CreatePrivateMessage(rcvMsg.Text, *rcvMsg.Destination)
 				// append the private message to the list of pms
@@ -338,14 +344,12 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				g.PrintExpectedRumorMode("private message")
 			}
 
-		} else if rcvMsg.Text == "" && rcvMsg.Destination != nil &&
-			rcvMsg.File != nil && rcvMsg.Request == nil {
+		} else if !bText && bDest && bFile && !bReq {
 			// send file
 
 			// send metafile to host
 			g.SendFileTo(*rcvMsg.Destination, *rcvMsg.File)
-		} else if rcvMsg.Text == "" && rcvMsg.Destination != nil &&
-			rcvMsg.File != nil && rcvMsg.Request != nil {
+		} else if !bText && bDest && bFile && bReq {
 			// file request
 
 			if g.Mode == u.RumorModeStr {
@@ -355,6 +359,8 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			} else {
 				g.PrintExpectedRumorMode("file request")
 			}
+		} else {
+			g.Printer.Println("Error: invalide message received")
 		}
 	}
 }

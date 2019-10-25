@@ -1042,14 +1042,14 @@ function writeNewMessages(data){
 
 function createReply(origin, text){
     //return '<div class="message"> <p class="sender">'+origin+'<p>' + text +'</p>'+'</div>'
-    return '<ul><li class="replies">' +
+    return '<ul><li class="sent">' +
 					'<p><b>'+origin+'</b></br>' + text+'</p>' +
 				'</li></ul>'
 }
 
 function createSent(origin, text){
     //return '<div class="message"> <p class="sender">'+origin+'<p>' + text +'</p>'+'</div>'
-    return '<ul><li class="sent">' +
+    return '<ul><li class="replies">' +
 					'<p><b>'+origin+'</b></br>' + text+'</p>' +
 				'</li></ul>'
 }

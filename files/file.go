@@ -38,7 +38,7 @@ func LoadSharedFiles() []u.FileStruct {
 
 // LoadFile get a file from the filename
 func LoadFile(filename string) *os.File {
-	f, err := os.Open(filename)
+	f, err := os.Open(u.SharedFolderPath + "/" + filename)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -58,7 +58,7 @@ func ScanFile(f *os.File) (*u.FileStruct, error) {
 
 	// create the chunk map
 	var metafile []byte
-	var chunks map[u.ShaHash]*u.FileChunk
+	chunks := make(map[u.ShaHash]*u.FileChunk)
 	tmp := make([]byte, u.ChunkSize)
 	chunkCount := 0
 
@@ -82,14 +82,15 @@ func ScanFile(f *os.File) (*u.FileStruct, error) {
 		var data []byte
 		copy(data, tmp)
 		// create the file chuck
-		chunk := &u.FileChunk{
+		chunk := u.FileChunk{
 			File:   &filestruct,
 			Number: chunkCount,
 			Hash:   hash,
 			Data:   data,
 		}
+
 		// associate the hash with the chunk
-		chunks[hash] = chunk
+		chunks[hash] = &chunk
 	}
 
 	if u.ChunkSize < len(metafile) {

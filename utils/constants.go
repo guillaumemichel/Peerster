@@ -45,7 +45,7 @@ const SharedFolderPath string = "./_SharedFiles"
 const DownloadsFolderPath string = "./_Downloads"
 
 // Filemode is file mode for the shared and download folders
-const Filemode os.FileMode = 644
+const Filemode os.FileMode = 0777
 
 // ChunkSize size of a file chunk to send (8KB)
 const ChunkSize int = 8192 // 8 KB

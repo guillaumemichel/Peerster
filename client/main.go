@@ -55,24 +55,42 @@ func main() {
 	}
 
 	var message u.Message
-	// simple message, rumor or private message
-	if *msg != "" {
-		if file != nil || req != nil {
-			// invalid argument
-			BadArgument()
+
+	bText := *msg != ""
+	bDest := dest != nil && *dest != ""
+	bFile := file != nil && *file != ""
+	bReq := req != nil && *req != ""
+
+	// simple message or rumor message
+	if bText && !bDest && !bFile && !bReq {
+		// create the packet to send
+		message = u.Message{
+			Text:        *msg,
+			Destination: nil,
+			File:        nil,
+			Request:     nil,
 		}
+	} else if bText && bDest && !bFile && !bReq {
+		// private message
 		// create the packet to send
 		message = u.Message{
 			Text:        *msg,
 			Destination: dest,
+			File:        nil,
+			Request:     nil,
 		}
-	} else if dest != nil && file != nil && req == nil { // sending file
+
+	} else if !bText && bDest && bFile && !bReq {
+		// sending file
 		// create the send file message
 		message = u.Message{
 			Destination: dest,
 			File:        file,
+			Text:        "",
+			Request:     nil,
 		}
-	} else if dest != nil && file != nil && req != nil { // requesting file
+	} else if !bText && bDest && bFile && bReq {
+		// requesting file
 		// cast string request to []byte
 		hashByte, err := hex.DecodeString(*req)
 		if err != nil {

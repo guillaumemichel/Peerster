@@ -1,6 +1,8 @@
 package gossiper
 
 import (
+	"encoding/hex"
+
 	f "github.com/guillaumemichel/Peerster/files"
 	u "github.com/guillaumemichel/Peerster/utils"
 )
@@ -129,7 +131,25 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 			}
 		}
 	}
-	g.Printer.Println("Warning: received data reply that I don't want!")
+	// not wanted! register the file
+	copy(h[:], drep.HashValue)
+	metaf := make([]u.ShaHash, 0)
+	for i := 0; i < len(drep.Data); i += u.ShaSize {
+		// add all hashes to pending chunks of v
+		copy(h[:], drep.Data[i:i+u.ShaSize])
+		metaf = append(metaf, h)
+	}
+
+	fstatus := u.FileRequestStatus{
+		MetafileHash:  h,
+		PendingChunks: metaf,
+		MetafileOK:    true,
+		ChunkCount:    -1, // -1 indicate that we received spontaneously a mfile
+	}
+	g.FileStatus = append(g.FileStatus, &fstatus)
+	g.Printer.Println("RECEIVED metafile", hex.EncodeToString(drep.HashValue),
+		"from", drep.Origin)
+	//g.Printer.Println("Warning: received data reply that I don't want!")
 }
 
 // ReconstructFile reconstruct a file after received all the chunks
