@@ -72,11 +72,11 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 			}
 		}
 	}
-	if !found {
+	/*if !found {
 		// hash not found
 		g.Printer.Println("Warning: data requested and not found")
 		return
-	}
+	}*/
 	// create the data reply
 	drep := u.DataReply{
 		Origin:      g.Name,
@@ -91,6 +91,7 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 
 // HandleDataReply handles data replies that are received
 func (g *Gossiper) HandleDataReply(drep u.DataReply) {
+
 	f.CheckDownloadDir()
 	var h u.ShaHash
 	copy(h[:], drep.HashValue)
@@ -99,6 +100,13 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 		// a metafile we were waiting for is here !
 		if !v.MetafileOK && h == v.MetafileHash {
 			// ack the metafile
+			v.Ack <- true
+			// check if peer had the file
+			if len(drep.Data) == 0 {
+				g.Printer.Println(drep.Origin, "doesn't have the file",
+					hex.EncodeToString(drep.HashValue))
+				return
+			}
 			v.MetafileOK = true
 			v.PendingChunks = make([]u.ShaHash, 0)
 			for i := 0; i < len(drep.Data); i += u.ShaSize {
@@ -106,6 +114,7 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 				copy(h[:], drep.Data[i:i+u.ShaSize])
 				v.PendingChunks = append(v.PendingChunks, h)
 			}
+			//g.Printer.Println(len(v.PendingChunks), "chunks in total")
 			// request first chunk
 			g.RequestNextChunk(v)
 			return
@@ -115,6 +124,15 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 			for _, w := range v.PendingChunks {
 				// if the hash matches
 				if h == w {
+					// ack the chunk
+					v.Ack <- true
+					// check if peer had the file
+					if len(drep.Data) == 0 {
+						g.Printer.Println(drep.Origin, "doesn't have the file",
+							hex.EncodeToString(drep.HashValue))
+						return
+					}
+
 					// append data to the one we already have
 					v.Data = append(v.Data, drep.Data)
 					// increase chunk counter
@@ -139,12 +157,14 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 		copy(h[:], drep.Data[i:i+u.ShaSize])
 		metaf = append(metaf, h)
 	}
+	c := make(chan bool)
 
 	fstatus := u.FileRequestStatus{
 		MetafileHash:  h,
 		PendingChunks: metaf,
 		MetafileOK:    true,
 		ChunkCount:    -1, // -1 indicate that we received spontaneously a mfile
+		Ack:           c,
 	}
 	g.FileStatus = append(g.FileStatus, &fstatus)
 	g.Printer.Println("RECEIVED metafile", hex.EncodeToString(drep.HashValue),
@@ -202,6 +222,8 @@ func (g *Gossiper) ReconstructFile(fstatus *u.FileRequestStatus) {
 			"download")
 	}
 	g.FileStatus = fs
+
+	g.PrintReconstructFile(file.Name)
 
 	// append the filestruct to known files
 	file.Size = f.WriteFileToDownloads(&file)

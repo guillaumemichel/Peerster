@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	u "github.com/guillaumemichel/Peerster/utils"
 )
@@ -156,6 +157,7 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 		HashValue:   hash,
 	}
 
+	c := make(chan bool)
 	// create the new file status
 	fstatus := u.FileRequestStatus{
 		Name:         name,
@@ -164,13 +166,14 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 		MetafileOK:   false,
 		ChunkCount:   0,
 		Data:         data,
+		Ack:          c,
 	}
 	g.FileStatus = append(g.FileStatus, &fstatus)
 
 	// print downloading metafile message
 	g.PrintDownloadMetaFile(dest, name)
 
-	g.RouteDataReq(req)
+	g.SendFileRequest(&fstatus, req)
 }
 
 // RequestNextChunk request the next chunk to dest with hash
@@ -185,6 +188,31 @@ func (g *Gossiper) RequestNextChunk(fstatus *u.FileRequestStatus) {
 	// print downloading chunk message
 	g.PrintDownloadChunk(fstatus.Destination, fstatus.Name,
 		fstatus.ChunkCount+1)
-	// route the packet
-	g.RouteDataReq(req)
+	g.SendFileRequest(fstatus, req)
+}
+
+// SendFileRequest send file request and manage timeouts
+func (g *Gossiper) SendFileRequest(fstatus *u.FileRequestStatus,
+	req u.DataRequest) {
+
+	// creates the timeout
+	timeout := make(chan bool)
+
+	acked := false
+	for !acked {
+		// route the packet
+		g.RouteDataReq(req)
+
+		go func() {
+			// timeout value defined in utils/constants.go
+			time.Sleep(time.Duration(u.FileTimout) * time.Second)
+			timeout <- true
+		}()
+		select {
+		case <-fstatus.Ack:
+			acked = true
+		case <-timeout:
+
+		}
+	}
 }

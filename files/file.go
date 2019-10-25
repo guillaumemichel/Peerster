@@ -79,14 +79,12 @@ func ScanFile(f *os.File) (*u.FileStruct, error) {
 		// add the hash to metafile
 		metafile = append(metafile, hash[:]...)
 
-		var data []byte
-		copy(data, tmp)
 		// create the file chuck
 		chunk := u.FileChunk{
 			File:   &filestruct,
 			Number: chunkCount,
 			Hash:   hash,
-			Data:   data,
+			Data:   tmp[:n],
 		}
 
 		// associate the hash with the chunk
@@ -123,7 +121,6 @@ func WriteFileToDownloads(fstruct *u.FileStruct) int64 {
 	err := ioutil.WriteFile(u.DownloadsFolderPath+"/"+fstruct.Name,
 		data, u.Filemode)
 	if err != nil {
-		fmt.Println(err)
 		return 0
 	}
 	return int64(len(data))
@@ -134,7 +131,7 @@ func checkDir(dir string) {
 	// not exist yet
 	if _, err := os.Stat(dir); err != nil {
 		if os.IsNotExist(err) {
-			os.Mkdir(u.SharedFolderPath, u.Filemode)
+			os.Mkdir(dir, u.Filemode)
 		} else {
 			fmt.Println("Error: cannot open", dir)
 		}

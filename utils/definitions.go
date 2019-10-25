@@ -140,4 +140,5 @@ type FileRequestStatus struct {
 	PendingChunks []ShaHash
 	ChunkCount    int
 	Data          [][]byte
+	Ack           chan bool
 }

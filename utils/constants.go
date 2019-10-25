@@ -52,3 +52,6 @@ const ChunkSize int = 8192 // 8 KB
 
 // ShaSize length of a sha hash in bytes
 const ShaSize int = sha256.Size
+
+// FileTimout timeout value for file requests in seconds
+const FileTimout int = 5
