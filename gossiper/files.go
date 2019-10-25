@@ -37,6 +37,39 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 			break
 		}
 	}
+	// if not found look in the files being downloaded
+	if !found {
+		for _, fstatus := range g.FileStatus {
+			// if the wanted hash is metafilehash, data is the pending chunk
+			if hash == fstatus.MetafileHash {
+				// convert pending chunks to metafile
+				for _, v := range fstatus.PendingChunks {
+					data = append(data, v[:]...)
+				}
+				found = true
+				break
+				// else if the desired data is a block, data <- this block
+			}
+			for i, v := range fstatus.PendingChunks {
+				// found block
+				if hash == v {
+					if i <= fstatus.ChunkCount {
+						// if block is already downloaded
+						data = fstatus.Data[i]
+						found = true
+						break
+					} else {
+						g.Printer.Println("Warning: data requested",
+							"not downloaded yet")
+						return
+					}
+				}
+			}
+			if found {
+				break
+			}
+		}
+	}
 	if !found {
 		// hash not found
 		g.Printer.Println("Warning: data requested and not found")
@@ -107,30 +140,90 @@ func (g *Gossiper) ReconstructFile(fstatus *u.FileRequestStatus) {
 		meta = append(meta, v[:]...)
 	}
 
-	chunkMap := make(map[u.ShaHash]*u.FileChunk)
-	// TODO fill map
 	// create he filestruct
 	file := u.FileStruct{
 		Name:         fstatus.Name,
 		MetafileHash: fstatus.MetafileHash,
 		Metafile:     meta,
 		NChunks:      fstatus.ChunkCount,
-		Chunks:       chunkMap,
 	}
 
-	g.FileStructs = append(g.FileStructs, file)
+	// create the chunk map
+	chunkMap := make(map[u.ShaHash]*u.FileChunk)
+	for i, v := range fstatus.PendingChunks {
+		// create a chunk for the chunk map
+		chunk := u.FileChunk{
+			File:   &file,
+			Number: i,
+			Hash:   v,
+			Data:   fstatus.Data[i],
+		}
+		// map the hash of the chunk to the chunk
+		chunkMap[v] = &chunk
+	}
+
+	file.Chunks = chunkMap
+
+	// delete the filestatus from g
+	found := false
+	fs := g.FileStatus
+	for i, v := range fs {
+		if v == fstatus {
+			// erase the element
+			fs[i] = fs[len(fs)-1]
+			fs[len(fs)-1] = nil
+			fs = fs[:len(fs)-1]
+			found = true
+		}
+	}
+	// could not remove the filestatus from g
+	if !found {
+		g.Printer.Println("Error: could not delete filestatus after successful",
+			"download")
+	}
+	g.FileStatus = fs
+
+	// append the filestruct to known files
 	file.Size = f.WriteFileToDownloads(&file)
+	g.FileStructs = append(g.FileStructs, file)
 }
 
 // SendFileTo sends a file to dest
-func (g *Gossiper) SendFileTo(dest, file string) {
+func (g *Gossiper) SendFileTo(dest, filename string) {
 	//resolve file
 	hash := make([]byte, 0)
+	found := false
+	// look in files stored on peer
+	for _, fstruct := range g.FileStructs {
+		if fstruct.Name == filename {
+			hash = fstruct.MetafileHash[:]
+			found = true
+			break
+		}
+	}
+	// look in files being downloaded by the peer
+	if !found {
+		for _, fstatus := range g.FileStatus {
+			if fstatus.Name == filename {
+				hash = fstatus.MetafileHash[:]
+				found = true
+				break
+			}
+		}
+	}
+	// if not found print error and abort
+	if !found {
+		g.Printer.Println("Error: file", filename, "not found!")
+		return
+	}
+
+	// create data request
 	dreq := u.DataRequest{
 		Origin:      dest,
 		Destination: g.Name,
 		HopLimit:    u.DefaultHopLimit,
 		HashValue:   hash,
 	}
+	// handle the data request, this will generate the corresponding data reply
 	g.HandleDataReq(dreq)
 }

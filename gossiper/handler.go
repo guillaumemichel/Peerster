@@ -342,13 +342,16 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			rcvMsg.File != nil && rcvMsg.Request == nil {
 			// send file
 
+			// send metafile to host
+			g.SendFileTo(*rcvMsg.Destination, *rcvMsg.File)
 		} else if rcvMsg.Text == "" && rcvMsg.Destination != nil &&
 			rcvMsg.File != nil && rcvMsg.Request != nil {
 			// file request
 
 			if g.Mode == u.RumorModeStr {
 				// create a file request and sends it
-				g.RequestFile(*rcvMsg.File, *rcvMsg.Destination, *rcvMsg.Request)
+				g.RequestFile(*rcvMsg.File,
+					*rcvMsg.Destination, *rcvMsg.Request)
 			} else {
 				g.PrintExpectedRumorMode("file request")
 			}
