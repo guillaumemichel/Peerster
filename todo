@@ -2,4 +2,5 @@
 - 5 sec timout ok
 - Check again
 - Ack file ok
-- Dying processes
+- Dying processes (signal handler)
+- Scan _SharedFiles and _Downloads when sending files/ scan file when -file flag is set and do not preload files
