@@ -641,7 +641,7 @@
 #frame .content .messages ul li {
   display: inline-block;
   clear: both;
-  float: left;
+  /*float: right;*/
   margin: 15px 15px 5px 15px;
   width: calc(100% - 25px);
   font-size: 0.9em;
@@ -793,7 +793,7 @@ h1 {
 
 /* Set a style for the submit/login button */
 .form-container .btn {
-  background-color: #4CAF50;
+  background-color: #7C0F50;
   color: white;
   padding: 16px 20px;
   border: none;
@@ -805,7 +805,7 @@ h1 {
 
 /* Add a red background color to the cancel button */
 .form-container .cancel {
-  background-color: red;
+  background-color: #4CAF50;
 }
 
 .form-container .index {
@@ -1041,8 +1041,8 @@ Website: http://emilcarlsson.se/
 
           <input id="form_file" type="file">
           <br>
-          <button type="submit" class="btn index">Index file</button>
-          <!-- <button type="button" class="btn cancel" onclick="closeForm()">Close</button> -->
+          <!-- <button class="btn index" onclick="indexFile();">Index file</button>  -->
+          <button type="button" id="index_button" class="btn cancel" onclick="indexFile()">Index</button>
   
       </form>
       <!-- <form class="form-container">    
@@ -1063,9 +1063,9 @@ Website: http://emilcarlsson.se/
   <!-- <script src='//production-assets.codepen.io/assets/common/stopExecutionOnTimeout-b2a7b3fe212eaa732349046d8416e00a9dec26eb7fd347590fbced3ab38af52e.js'></script><script src='https://code.jquery.com/jquery-2.2.4.min.js'></script> -->
 <script >
 
-var form_index_file = '<form class="form-container"><h1>Files</h1><input id="form_file" type="file"><br><button type="submit" class="btn index">Index file</button></form>'
-var form_global = '<form class="form-container"><label for="email"><b>Filename</b></label><input type="text" placeholder="Enter Filename" name="email"><label><b>Hash</b></label><input type="text" placeholder="Enter Hash" name="email"><label><b>Destination</b></label><input type="text" placeholder="Enter Destination" name="email"><button type="submit" class="btn">Request file</button></form>'
-var form_contact = '<form class="form-container"><label for="email"><b>Filename</b></label><input type="text" placeholder="Enter Filename" name="email"><label><b>Hash</b></label><input type="text" placeholder="Enter Hash" name="email"><button type="submit" class="btn">Request file</button></form>'
+var form_index_file = '<form class="form-container"><h1>Files</h1><input id="form_file" type="file"><br><button type="button" class="btn cancel" onclick="indexFile()">Index</button></form>'
+var form_global = '<form class="form-container"><label><b>Filename</b></label><input id="file_request_name" type="text" placeholder="Enter Filename"><label><b>Hash</b></label><input id="file_hash" type="text" placeholder="Enter Hash"><label><b>Destination</b></label><input id="file_destination" type="text" placeholder="Enter Destination"><button type="button" class="btn cancel" onclick="requestFile()">Request file</button></form>'
+var form_contact = '<form class="form-container"><label><b>Filename</b></label><input id="file_request_name" type="text" placeholder="Enter Filename"><label><b>Hash</b></label><input id="file_hash" type="text" placeholder="Enter Hash"><button type="button" onclick="requestFile()" class="btn cancel">Request file</button></form>'
 
 var id="Gossiper"
 var dest_count = 0
@@ -1277,7 +1277,7 @@ function updateFileMenu(old,n){
   if(n===0){
     $('#file_menu').empty()
     $('#file_menu').append(form_index_file)
-    //$('#file_menu').append(form_global)
+    $('#file_menu').append(form_global)
   } else if(old===0){
     $('#file_menu').empty()
     $('#file_menu').append(form_index_file)
@@ -1326,8 +1326,45 @@ function updateMessage(n){
   $("#messages_history").append(messages[n])
 }
 
-document.getElementById("form_file").onchange = event => {
-        $.post("/update",
+function indexFile(){
+  var fn = $('#form_file').val();
+  closeForm()
+  window.alert(fn)
+  $.ajax({
+    url: "/index",
+    method: "POST",
+    dataType: "json",
+    data: {
+      filename: fn
+    },
+  });
+}
+
+function requestFile(){
+  var fn = $('#file_request_name').val()
+  var h = $('#file_hash').val()
+
+  if(contact_index===0){
+    var dest = $('#file_destination').val()
+  } else {
+    var dest = names[contact_index]
+  }
+  window.alert(fn+" "+h+" "+dest)
+  $.ajax({
+    url: "/requestfile",
+    method: "POST",
+    dataType: "json",
+    data: {
+      filename: fn,
+      hash: h,
+      destination: dest
+    },
+  });
+
+}
+
+/*document.getElementById("form_file").onchange = event => {
+        $.post("/index",
             {
                 type: "file",
                 value: event.target.files[0]["name"]
@@ -1335,7 +1372,7 @@ document.getElementById("form_file").onchange = event => {
 
         event.preventDefault();
     };
-
+*/
 /*
 function expandHosts(){
   $("#profile").toggleClass("expanded");
@@ -1427,10 +1464,15 @@ function openForm() {
     document.getElementById("file_menu").style.display = "block";
     file_open=true;
   } else {
-    document.getElementById("file_menu").style.display = "none";
-    file_open=false;
+    closeForm();
   }
 }
+
+function closeForm(){
+  document.getElementById("file_menu").style.display = "none";
+  file_open=false;
+}
+
 
 
 //# sourceURL=pen.js

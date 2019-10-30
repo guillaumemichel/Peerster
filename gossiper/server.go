@@ -1,6 +1,7 @@
 package gossiper
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -116,6 +117,31 @@ func (g *Gossiper) StartServer() {
 		}
 	}
 
+	indexFile := func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			fn := r.FormValue("filename")
+			g.Printer.Println(fn)
+			g.IndexFile(fn)
+		}
+	}
+
+	requestFile := func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			fn := r.FormValue("filename")
+			hash := r.FormValue("hash")
+			dest := r.FormValue("destination")
+
+			h, err := hex.DecodeString(hash)
+			if err != nil {
+				g.Printer.Println(err)
+				return
+			}
+			g.RequestFile(fn, dest, h)
+		}
+	}
+
 	http.Handle("/", http.FileServer(http.Dir("gui/html/")))
 	http.HandleFunc("/id", getGossiperID)
 	http.HandleFunc("/node", getPeers)
@@ -124,6 +150,8 @@ func (g *Gossiper) StartServer() {
 	http.HandleFunc("/newpeer", addPeer)
 	http.HandleFunc("/updatedest", destinationHandler)
 	http.HandleFunc("/pm", pmHandler)
+	http.HandleFunc("/index", indexFile)
+	http.HandleFunc("/requestfile", requestFile)
 
 	address := u.LocalhostAddr + ":" + strconv.Itoa(g.GUIPort)
 	ok := true

@@ -127,33 +127,48 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 
 	data := make([][]byte, 0)
 
-	// look for file in the ones that were sent to me
-	statuses := g.FileStatus
-	for _, v := range statuses {
-		// -1 is for received files, look for same mfile hash
-		if v.ChunkCount == -1 && v.MetafileHash == h {
-			// set status file
-			v.ChunkCount = 0
-			v.Name = name
-			v.Destination = dest
-			v.Data = data
-
-			metafile := make([]byte, 0)
-			for _, w := range v.PendingChunks {
-				metafile = append(metafile, w[:]...)
+	/*
+		//check if we already have it
+		fstructs := g.FileStructs
+		for _, v := range fstructs {
+			// if we have the hash in memory, we have the file, return
+			if v.MetafileHash == h {
+				return
 			}
+		}*/
 
-			// create data reply to fake that we got the mfile from dest
-			drep := u.DataReply{
-				Origin:      dest,
-				Destination: g.Name,
-				HashValue:   hash,
-				Data:        metafile,
-				HopLimit:    u.DefaultHopLimit,
+	/*
+		// look for file in the ones that were sent to me
+		statuses := g.FileStatus
+
+			for _, v := range statuses {
+				// -1 is for received files, look for same mfile hash
+
+					if v.ChunkCount == -1 && v.MetafileHash == h {
+						// set status file
+						v.ChunkCount = 0
+						v.Name = name
+						v.Destination = dest
+						v.Data = data
+
+						metafile := make([]byte, 0)
+						for _, w := range v.PendingChunks {
+							metafile = append(metafile, w[:]...)
+						}
+
+						// create data reply to fake that we got the mfile from dest
+						drep := u.DataReply{
+							Origin:      dest,
+							Destination: g.Name,
+							HashValue:   hash,
+							Data:        metafile,
+							HopLimit:    u.DefaultHopLimit,
+						}
+						g.HandleDataReply(drep)
+					}
+
 			}
-			g.HandleDataReply(drep)
-		}
-	}
+	*/
 
 	// create the data request
 	req := u.DataRequest{
