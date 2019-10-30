@@ -292,6 +292,13 @@ func (g *Gossiper) IndexFile(filename string) {
 		fmt.Println(err)
 		return
 	}
+
+	for _, v := range g.FileStructs {
+		if filename == fstruct.Name && v.MetafileHash == fstruct.MetafileHash {
+			g.Printer.Println("Warning: file already indexed. Aborting.")
+			return
+		}
+	}
 	// add it to the gossiper
 	g.FileStructs = append(g.FileStructs, *fstruct)
 	g.PrintHashOfIndexedFile(filename,

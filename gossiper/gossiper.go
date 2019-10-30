@@ -67,7 +67,20 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	cliConn, err := net.ListenUDP("udp4", cliAddr)
 	PanicCheck(err)
 
-	peers := u.ParsePeers(peerList)
+	peers := *u.ParsePeers(peerList)
+
+	// remove the gossipAddr of g if it is in the host list
+	for i, p := range peers {
+		if p.String() == gossAddr.String() {
+			// remove p
+			if i == len(peers)-1 {
+				peers = peers[:i]
+			} else {
+				peers = append(peers[:i], peers[i+1:]...)
+			}
+		}
+	}
+
 	var mode string
 	if simple {
 		mode = u.SimpleModeStr
@@ -101,7 +114,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		ClientAddr:   cliAddr,
 		GossipConn:   gossConn,
 		ClientConn:   cliConn,
-		Peers:        *peers,
+		Peers:        peers,
 		Mode:         mode,
 		PendingACKs:  &acks,
 		WantList:     &status,

@@ -1,8 +1,8 @@
 - GUI
-- 5 sec timout ok
+- 5 sec timout [ok]
 - Check again
-- Ack file ok
-- Dying processes (signal handler)
+- Ack file [ok]
+- Dying processes (signal handler) [ok]
 - Scan _SharedFiles and _Downloads when sending files/ scan file when -file flag is set and do not preload files
-- Avoid indexing 2times same file
-- Avoid having itself as peer
+- Avoid indexing 2times same file [should be ok]
+- Avoid having itself as peer [should be ok]
