@@ -4,3 +4,5 @@
 - Ack file ok
 - Dying processes (signal handler)
 - Scan _SharedFiles and _Downloads when sending files/ scan file when -file flag is set and do not preload files
+- Avoid indexing 2times same file
+- Avoid having itself as peer

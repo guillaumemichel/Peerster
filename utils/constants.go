@@ -20,9 +20,6 @@ const AntiEntropyDefault int = 10
 // RTimerDefault is the defaut value for rtimer
 const RTimerDefault int = 0
 
-// BufferSize : read buffer size in bytes
-const BufferSize int = 2048
-
 // LocalhostAddr : "127.0.0.1"
 const LocalhostAddr string = "127.0.0.1"
 
@@ -49,6 +46,9 @@ const Filemode os.FileMode = 0777
 
 // ChunkSize size of a file chunk to send (8KB)
 const ChunkSize int = 8192 // 8 KB
+
+// BufferSize : read buffer size in bytes
+const BufferSize int = ChunkSize + 2048
 
 // ShaSize length of a sha hash in bytes
 const ShaSize int = sha256.Size

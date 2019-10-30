@@ -79,13 +79,15 @@ func ScanFile(f *os.File) (*u.FileStruct, error) {
 		hash := sha256.Sum256(tmp[:n])
 		// add the hash to metafile
 		metafile = append(metafile, hash[:]...)
+		dat := make([]byte, n)
+		copy(dat, tmp[:n])
 
 		// create the file chuck
 		chunk := u.FileChunk{
 			File:   &filestruct,
 			Number: chunkCount,
 			Hash:   hash,
-			Data:   tmp[:n],
+			Data:   dat,
 		}
 
 		// associate the hash with the chunk
@@ -115,6 +117,11 @@ func WriteFileToDownloads(fstruct *u.FileStruct) int64 {
 		// translate hash []byte to shahash (in h)
 		copy(h[:], fstruct.Metafile[i:i+u.ShaSize])
 		// load the data from the chunk in the same order
+		// fmt.Println(h)
+		//fmt.Println(string(fstruct.Chunks[h].Data))
+		if h != sha256.Sum256(fstruct.Chunks[h].Data) {
+			fmt.Println("mismatch between data and hash")
+		}
 		data = append(data, fstruct.Chunks[h].Data...)
 	}
 
