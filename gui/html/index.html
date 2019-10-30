@@ -14,6 +14,8 @@
 <script>try{Typekit.load({ async: true });}catch(e){}</script>
 <link rel='stylesheet prefetch' href='https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.min.css'><link rel='stylesheet prefetch' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.2/css/font-awesome.min.css'>
 
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style class="cp-pen-styles">body {
   display: flex;
   align-items: center;
@@ -362,7 +364,7 @@
   color: #f5f5f5;
 }
 #frame #sidepanel #contacts {
-  height: calc(100% - 177px);
+  height: calc(100% - 177px); /*177*/
   overflow-y: scroll;
   overflow-x: hidden;
 }
@@ -484,8 +486,26 @@
   width: 100%;
   bottom: 0;
 }
-#frame #sidepanel #bottom-bar button {
-  float: left;
+
+#frame #sidepanel #bottom-bar label {
+  margin-left: 10px;
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+
+#frame #sidepanel #bottom-bar form {
+  margin-left: 10px;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+#frame #sidepanel #bottom-bar #peers {
+  bottom: 0;
+}
+
+#frame #sidepanel #bottom-bar #peers button {
+  bottom: 0;
+  float: right;
   border: none;
   width: 50%;
   padding: 10px 0;
@@ -496,43 +516,43 @@
   font-family: "proxima-nova",  "Source Sans Pro", sans-serif;
 }
 @media screen and (max-width: 735px) {
-  #frame #sidepanel #bottom-bar button {
+  #frame #sidepanel #bottom-bar #peers button {
     float: none;
     width: 100%;
     padding: 15px 0;
   }
 }
-#frame #sidepanel #bottom-bar button:focus {
+#frame #sidepanel #bottom-bar #peers button:focus {
   outline: none;
 }
-#frame #sidepanel #bottom-bar button:nth-child(1) {
+#frame #sidepanel #bottom-bar #peers button:nth-child(1) {
   border-right: 1px solid #2c3e50;
 }
 @media screen and (max-width: 735px) {
-  #frame #sidepanel #bottom-bar button:nth-child(1) {
+  #frame #sidepanel #bottom-bar #peers button:nth-child(1) {
     border-right: none;
     border-bottom: 1px solid #2c3e50;
   }
 }
-#frame #sidepanel #bottom-bar button:hover {
+#frame #sidepanel #bottom-bar #peers button:hover {
   background: #435f7a;
 }
-#frame #sidepanel #bottom-bar button i {
+#frame #sidepanel #bottom-bar #peers button i {
   margin-right: 3px;
   font-size: 1em;
 }
 @media screen and (max-width: 735px) {
-  #frame #sidepanel #bottom-bar button i {
+  #frame #sidepanel #bottom-bar #peers button i {
     font-size: 1.3em;
   }
 }
 @media screen and (max-width: 735px) {
-  #frame #sidepanel #bottom-bar button span {
+  #frame #sidepanel #bottom-bar #peers button span {
     display: none;
   }
 }
 /**/
-#frame #sidepanel #bottom-bar input {
+#frame #sidepanel #bottom-bar #peers input {
   font-family: "proxima-nova",  "Source Sans Pro", sans-serif;
   float: left;
   border: none;
@@ -544,11 +564,11 @@
   color: #32465a;
 }
 @media screen and (max-width: 735px) {
-  #frame #sidepanel #bottom-bar input {
+  #frame #sidepanel #bottom-bar #peers input {
     padding: 15px 32px 16px 8px;
   }
 }
-#frame #sidepanel #bottom-bar input:focus {
+#frame #sidepanel #bottom-bar #peers input:focus {
   outline: none;
 }
 /**/
@@ -601,14 +621,14 @@
 }
 #frame .content .messages {
   height: auto;
-  min-height: calc(100% - 93px);
-  max-height: calc(100% - 93px);
+  min-height: calc(98.7% - 93px);
+  max-height: calc(98.7% - 93px);
   overflow-y: scroll;
   overflow-x: hidden;
 }
 @media screen and (max-width: 735px) {
   #frame .content .messages {
-    max-height: calc(100% - 105px);
+    max-height: calc(98.7% - 105px);
   }
 }
 #frame .content .messages::-webkit-scrollbar {
@@ -732,6 +752,71 @@
 #frame .content .message-input .wrap button:focus {
   outline: none;
 }
+
+/* The popup form - hidden by default */
+.form-popup {
+  display: none;
+  position: fixed;
+  bottom: 71px;
+  right: 155px;
+  border: 3px solid #f1f1f1;
+  z-index: 9;
+}
+
+h1 {
+  font-size: 40px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+/* Add styles to the form container */
+.form-container {
+  max-width: 300px;
+  padding: 10px;
+  background-color: white;
+}
+
+/* Full-width input fields */
+.form-container input[type=text], .form-container input[type=text] {
+  width: 100%;
+  padding: 15px;
+  margin: 5px 0 22px 0;
+  border: none;
+  background: #f1f1f1;
+}
+
+/* When the inputs get focus, do something */
+.form-container input[type=text]:focus, .form-container input[type=text]:focus {
+  background-color: #ddd;
+  outline: none;
+}
+
+/* Set a style for the submit/login button */
+.form-container .btn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 16px 20px;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  margin-bottom:10px;
+  opacity: 0.8;
+}
+
+/* Add a red background color to the cancel button */
+.form-container .cancel {
+  background-color: red;
+}
+
+.form-container .index {
+  background-color: blue;
+}
+
+/* Add some hover effects to buttons */
+.form-container .btn:hover, .open-button:hover {
+  opacity: 1;
+}
+
 </style></head><body>
 <!-- 
 
@@ -773,9 +858,11 @@ Website: http://emilcarlsson.se/
 			</div>
     </div>
     <div id="bottom-bar">
-      <input id="newpeer" type="text" placeholder="Peer address ..." />
-			<button id="addcontact" onclick="sendPeer();"><i class="fa fa-user-plus fa-fw" aria-hidden="true"></i> <span>Add peer</span></button>
-		</div>
+      <div id="peers">
+        <input id="newpeer" type="text" placeholder="Peer address ..." />
+        <button id="addcontact" onclick="sendPeer();"><i class="fa fa-user-plus fa-fw" aria-hidden="true"></i> <span>Add peer</span></button>
+      </div>
+    </div>
     <div id="hosts">
       <b>Peers:</b>
     </div>
@@ -939,16 +1026,46 @@ Website: http://emilcarlsson.se/
 			</ul> -->
 		</div>
 		<div class="message-input">
-			<div class="wrap">
-			<input type="text" id="message_input" placeholder="Write your message..." />
-			<i class="fa fa-paperclip attachment" aria-hidden="true"></i>
-			<button class="submit"><i class="fa fa-paper-plane" aria-hidden="true"></i></button>
-			</div>
+      <div class="wrap">
+          <input type="text" id="message_input" placeholder="Write your message..." />
+          <i class="fa fa-paperclip attachment" onclick="openForm()" aria-hidden="true"></i>
+          <button class="submit"><i class="fa fa-paper-plane" aria-hidden="true"></i></button>
+          </div>
+    
     </div>
   </div>
+
+  <div class="form-popup" id="file_menu">
+      <form class="form-container">
+          <h1>Files</h1>
+
+          <input id="form_file" type="file">
+          <br>
+          <button type="submit" class="btn index">Index file</button>
+          <!-- <button type="button" class="btn cancel" onclick="closeForm()">Close</button> -->
   
+      </form>
+      <!-- <form class="form-container">    
+        <label for="email"><b>Filename</b></label>
+        <input type="text" placeholder="Enter Filename" name="email" required>
+    
+        <label><b>Hash</b></label>
+        <input type="text" placeholder="Enter Hash" name="email">
+
+        <label><b>Destination</b></label>
+        <input type="text" placeholder="Enter Destination" name="email">
+
+        <button type="submit" class="btn">Request file</button>
+      </form> -->
+    </div>
+    
+
   <!-- <script src='//production-assets.codepen.io/assets/common/stopExecutionOnTimeout-b2a7b3fe212eaa732349046d8416e00a9dec26eb7fd347590fbced3ab38af52e.js'></script><script src='https://code.jquery.com/jquery-2.2.4.min.js'></script> -->
 <script >
+
+var form_index_file = '<form class="form-container"><h1>Files</h1><input id="form_file" type="file"><br><button type="submit" class="btn index">Index file</button></form>'
+var form_global = '<form class="form-container"><label for="email"><b>Filename</b></label><input type="text" placeholder="Enter Filename" name="email"><label><b>Hash</b></label><input type="text" placeholder="Enter Hash" name="email"><label><b>Destination</b></label><input type="text" placeholder="Enter Destination" name="email"><button type="submit" class="btn">Request file</button></form>'
+var form_contact = '<form class="form-container"><label for="email"><b>Filename</b></label><input type="text" placeholder="Enter Filename" name="email"><label><b>Hash</b></label><input type="text" placeholder="Enter Hash" name="email"><button type="submit" class="btn">Request file</button></form>'
 
 var id="Gossiper"
 var dest_count = 0
@@ -961,6 +1078,7 @@ var peers = ''
 
 var last_pm = 0
 var message_count = 0
+var file_open = false
 
 
 $(document).ready(function(){
@@ -1139,10 +1257,11 @@ function createContact(dest){
 }
 
 function changeConversation(n){
-
+  if(n!==contact_index){
   // update the current contact
   contacts[contact_index] = '<ul><li class="contact" onclick="changeConversation('+contact_index+')"><div class="wrap"><div class="meta"><p class="name">'+names[contact_index]+'</p></div></div></li></ul>'
   contacts[n] = '<ul><li class="contact active" onclick="changeConversation('+n+')"><div class="wrap"><div class="meta"><p class="name">'+names[n]+'</p></div></div></li></ul>'
+  updateFileMenu(contact_index,n)
   contact_index = n
   setContacts()
 
@@ -1151,6 +1270,19 @@ function changeConversation(n){
   $('#header').append('<p>'+ names[n] + '</p>')
 
   updateMessage(n)
+  }
+}
+
+function updateFileMenu(old,n){
+  if(n===0){
+    $('#file_menu').empty()
+    $('#file_menu').append(form_index_file)
+    //$('#file_menu').append(form_global)
+  } else if(old===0){
+    $('#file_menu').empty()
+    $('#file_menu').append(form_index_file)
+    $('#file_menu').append(form_contact)
+  }
 }
 
 function getPM(){
@@ -1193,6 +1325,16 @@ function updateMessage(n){
   $("#messages_history").empty()
   $("#messages_history").append(messages[n])
 }
+
+document.getElementById("form_file").onchange = event => {
+        $.post("/update",
+            {
+                type: "file",
+                value: event.target.files[0]["name"]
+            });
+
+        event.preventDefault();
+    };
 
 /*
 function expandHosts(){
@@ -1279,6 +1421,18 @@ $('#message_input').on('keydown', function(e) {
     return false;
   }
 });
+
+function openForm() {
+  if(!file_open){
+    document.getElementById("file_menu").style.display = "block";
+    file_open=true;
+  } else {
+    document.getElementById("file_menu").style.display = "none";
+    file_open=false;
+  }
+}
+
+
 //# sourceURL=pen.js
 </script>
 </body></html>

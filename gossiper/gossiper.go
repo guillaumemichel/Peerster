@@ -4,11 +4,12 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
-	f "github.com/guillaumemichel/Peerster/files"
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
@@ -80,7 +81,10 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	var pm []u.PrivateMessage
 	var fstatus []*u.FileRequestStatus
 
-	fstructs := f.LoadSharedFiles()
+	/*
+		fstructs := f.LoadSharedFiles()
+	*/
+	fstructs := make([]u.FileStruct, 0)
 
 	var newMessages []u.RumorMessage
 	nm := u.SyncNewMessages{Messages: newMessages}
@@ -171,24 +175,26 @@ func (g *Gossiper) DoRouteRumors() {
 
 // Run : runs a given gossiper
 func (g *Gossiper) Run() {
-	go g.StartServer()
 
 	// starts a listener on ui and gossip ports
 	go g.Listen(g.ClientConn)
 	go g.Listen(g.GossipConn)
 
-	// send the initial route rumor
-	go g.SendRouteRumor()
-
 	// if in rumor mode, do anti entropy and sends route rumors
 	if g.Mode == u.RumorModeStr {
+		// send the initial route rumor
+		go g.SendRouteRumor()
+		// start server
+		go g.StartServer()
 		go g.DoRouteRumors()
 		go g.DoAntiEntropy()
 	}
-	// keep the program active
-	for {
 
-	}
+	// keep the program active until ctrl+c is pressed
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
+	os.Exit(0)
 }
 
 // StartNewGossiper : Creates and starts a new gossiper

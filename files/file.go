@@ -41,6 +41,7 @@ func LoadFile(filename string) *os.File {
 	f, err := os.Open(u.SharedFolderPath + "/" + filename)
 	if err != nil {
 		fmt.Println(err)
+		return nil
 	}
 	return f
 }

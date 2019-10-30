@@ -112,3 +112,8 @@ func (g *Gossiper) PrintExpectedRumorMode(message string) {
 func (g *Gossiper) PrintSentPrivateMessage(dest, text string) {
 	g.Printer.Printf("CLIENT MESSAGE %s dest %s\n", text, dest)
 }
+
+// PrintHashOfIndexedFile print the hash of an indexed file
+func (g *Gossiper) PrintHashOfIndexedFile(file, hash string) {
+	g.Printer.Printf("INDEXED file %s, hash is %s\n", file, hash)
+}

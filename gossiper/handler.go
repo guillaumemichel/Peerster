@@ -344,11 +344,16 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				g.PrintExpectedRumorMode("private message")
 			}
 
-		} else if !bText && bDest && bFile && !bReq {
-			// send file
+		} else if !bText && !bDest && bFile && !bReq {
+			// index file
 
 			// send metafile to host
-			g.SendFileTo(*rcvMsg.Destination, *rcvMsg.File)
+			// g.SendFileTo(*rcvMsg.Destination, *rcvMsg.File)
+			if g.Mode == u.RumorModeStr {
+				g.IndexFile(*rcvMsg.File)
+			} else {
+				g.PrintExpectedRumorMode("file index")
+			}
 		} else if !bText && bDest && bFile && bReq {
 			// file request
 
@@ -362,45 +367,6 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 		} else {
 			g.Printer.Println("Error: invalide message received")
 		}
-	}
-}
-
-// HandleMessage2 : handles a message on arrival
-func (g *Gossiper) HandleMessage2(rcvBytes []byte, udpAddr *net.UDPAddr) {
-
-	// message from the client
-	rcvMsg, ok := u.UnprotobufMessage(rcvBytes)
-	if g.ReceiveOK(ok, rcvBytes) {
-		m := rcvMsg.Text
-		// prints message to console
-		g.PrintMessageClient(m)
-
-		if g.Mode == u.SimpleModeStr { // simple mode
-			// creates a SimpleMessage in GossipPacket to be broadcasted
-			sm := g.CreateSimpleMessage(g.Name, m)
-			gPacket := u.GossipPacket{Simple: &sm}
-			// protobuf the message
-			packet := u.ProtobufGossip(&gPacket)
-			// broadcast the message to all peers
-			g.Broadcast(packet, nil)
-		} else { // rumor mode
-
-			if rcvMsg.Destination == nil || *rcvMsg.Destination == "" {
-				// public message
-				// creates a RumorMessage in GossipPacket to be broadcasted
-				rumor := g.CreateRumorMessage(m)
-
-				//write message to history
-				if g.WriteRumorToHistory(rumor) {
-					g.SendRumorToRandomWithoutPacketNorInitial(rumor)
-				}
-			} else { // private message
-				pm := g.CreatePrivateMessage(m, *rcvMsg.Destination)
-				g.PrivateMsg = append(g.PrivateMsg, pm)
-				g.DealWithPrivateMessage(pm)
-			}
-		}
-
 	}
 }
 

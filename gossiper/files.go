@@ -2,6 +2,7 @@ package gossiper
 
 import (
 	"encoding/hex"
+	"fmt"
 
 	f "github.com/guillaumemichel/Peerster/files"
 	u "github.com/guillaumemichel/Peerster/utils"
@@ -105,6 +106,17 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 			if len(drep.Data) == 0 {
 				g.Printer.Println(drep.Origin, "doesn't have the file",
 					hex.EncodeToString(drep.HashValue))
+				// delete the filestatus from g
+				fs := g.FileStatus
+				for i, w := range fs {
+					if w == v {
+						// erase the element
+						fs[i] = fs[len(fs)-1]
+						fs[len(fs)-1] = nil
+						fs = fs[:len(fs)-1]
+					}
+				}
+
 				return
 			}
 			v.MetafileOK = true
@@ -268,4 +280,20 @@ func (g *Gossiper) SendFileTo(dest, filename string) {
 	}
 	// handle the data request, this will generate the corresponding data reply
 	g.HandleDataReq(dreq)
+}
+
+// IndexFile indexes a file from the given filename and adds it to the gossiper
+func (g *Gossiper) IndexFile(filename string) {
+	// load the file from os
+	file := f.LoadFile(filename)
+	// build the filestruct
+	fstruct, err := f.ScanFile(file)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	// add it to the gossiper
+	g.FileStructs = append(g.FileStructs, *fstruct)
+	g.PrintHashOfIndexedFile(filename,
+		hex.EncodeToString(fstruct.MetafileHash[:]))
 }

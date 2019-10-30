@@ -80,8 +80,8 @@ func main() {
 			Request:     nil,
 		}
 
-	} else if !bText && bDest && bFile && !bReq {
-		// sending file
+	} else if !bText && !bDest && bFile && !bReq {
+		// indexing file
 		// create the send file message
 		message = u.Message{
 			Destination: dest,
