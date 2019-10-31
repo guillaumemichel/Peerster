@@ -164,14 +164,14 @@ func (g *Gossiper) DoAntiEntropy() {
 	// if anti entropy is 0 (or less) anti entropy disabled
 	if g.AntiEntropy > 0 {
 		for {
-			// sleep for anti entropy value
-			time.Sleep(time.Duration(g.AntiEntropy) * time.Second)
-
 			if len(g.Peers) > 0 {
 				// send status to random peer
 				target := g.GetRandPeer()
 				g.SendStatus(target)
 			}
+
+			// sleep for anti entropy value
+			time.Sleep(time.Duration(g.AntiEntropy) * time.Second)
 		}
 	}
 }
@@ -201,8 +201,6 @@ func (g *Gossiper) Run() {
 
 	// if in rumor mode, do anti entropy and sends route rumors
 	if g.Mode == u.RumorModeStr {
-		// send the initial route rumor
-		go g.SendRouteRumor()
 		// start server
 		go g.StartServer()
 		go g.DoRouteRumors()

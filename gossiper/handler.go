@@ -255,10 +255,10 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				g.UpdateRoute(*rumor, addrStr)
 
 				if g.WriteRumorToHistory(*rumor) {
-					if rumor.Text != "" {
-						// prints message to console
-						g.PrintRumorMessage(*rumor, addrStr)
-					}
+					//if rumor.Text != "" {
+					// prints message to console
+					g.PrintRumorMessage(*rumor, addrStr)
+					//}
 
 					// ack the message
 					g.SendStatus(udpAddr)
@@ -286,7 +286,7 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				g.RouteDataReq(*dr)
 			} else if rcvMsg.DataReply != nil {
 				// deals with data reply
-				g.HandleDataReply(*rcvMsg.DataReply)
+				g.RouteDataReply(*rcvMsg.DataReply)
 			} else {
 				fmt.Println("Error: unrecognized message")
 			}

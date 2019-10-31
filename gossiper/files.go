@@ -93,13 +93,17 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 // HandleDataReply handles data replies that are received
 func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 
+	if drep.Destination != g.Name {
+		g.RouteDataReply(drep)
+	}
+
 	f.CheckDownloadDir()
 	var h u.ShaHash
 	copy(h[:], drep.HashValue)
 
-	for _, v := range g.FileStatus {
+	statuses := g.FileStatus
+	for _, v := range statuses {
 		// a metafile we were waiting for is here !
-		g.Printer.Println(v.MetafileOK, v.MetafileHash)
 		if !v.MetafileOK && h == v.MetafileHash {
 			// ack the metafile
 			v.Ack <- true

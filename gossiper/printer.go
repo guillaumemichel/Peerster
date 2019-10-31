@@ -51,7 +51,6 @@ func (g *Gossiper) PrintRumorMessage(msg u.RumorMessage, from string) {
 // PrintStatusMessage : print status messages received from gossipers
 func (g *Gossiper) PrintStatusMessage(msg u.StatusPacket, from string) {
 	str := "STATUS from " + from
-	g.Printer.Printf("STATUS from %s", from)
 	for _, v := range msg.Want {
 		str += " peer " + v.Identifier + " nextID " +
 			strconv.Itoa(int(v.NextID))

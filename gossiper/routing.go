@@ -17,7 +17,9 @@ func (g *Gossiper) UpdateRoute(rumor u.RumorMessage, nextHop string) {
 		//if !ok || v.(string) != nextHop {
 		// update route and print message
 		g.Routes.Store(origin, nextHop)
-		g.PrintUpdateRoute(origin, nextHop)
+		if rumor.Text != "" {
+			g.PrintUpdateRoute(origin, nextHop)
+		}
 		//}
 	}
 }

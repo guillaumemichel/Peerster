@@ -15,7 +15,7 @@ do
 	let UIport=8080+$counter
 	let Gport=5000+$counter
 	name='Gossiper'$counter
-	./Peerster -name $name -GUIPort $UIport -UIPort $UIport -gossipAddr 127.0.0.1:$Gport -peers 127.0.0.1:5000 > scripts/logs/$name.out & 
+	./Peerster -name $name -GUIPort $UIport -UIPort $UIport -gossipAddr 127.0.0.1:$Gport -rtimer 1 -peers 127.0.0.1:5000 > scripts/logs/$name.out & 
 	((counter++))
 done
 
@@ -40,8 +40,16 @@ while [ $counter -lt $n ]
 do
 	let UIport=8080+$counter
 	name='Gossiper'$counter
+	let id=$counter-1
 	./client/client -UIPort $UIport -file file1_$counter -dest Gossiper0 -request $hash1
-	./client/client -UIPort $UIport -file file2_$counter -dest Gossiper0 -request $hash2
+	./client/client -UIPort $UIport -file file2_$counter -dest Gossiper$id -request $hash2
+	((counter++))
+done
+
+counter=1
+while [ $counter -lt $n ]
+do
+	name='Gossiper'$counter
 	if [ -f "_Downloads/file1_$counter" ]; then
 		cmp -s _SharedFiles/file1 _Downloads/file1_$counter
 		if [ $? -eq 1 ]; then
@@ -63,9 +71,9 @@ do
 		echo "FAILED file2 for "$name
 		passed="F"
 	fi
-
 	((counter++))
 done
+
 
 #sleep 20
 
