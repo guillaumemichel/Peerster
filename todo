@@ -1,4 +1,4 @@
-- GUI
+- GUI [ok]
 - 5 sec timout [ok]
 - Check again
 - Ack file [ok]
@@ -6,4 +6,4 @@
 - Scan _SharedFiles and _Downloads when sending files/ scan file when -file flag is set and do not preload files
 - Avoid indexing 2times same file [should be ok]
 - Avoid having itself as peer [should be ok]
-- Handle filenames that do not exist
+- Handle filenames that do not exist [ok]

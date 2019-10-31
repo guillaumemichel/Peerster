@@ -684,7 +684,7 @@
 }
 @media screen and (min-width: 735px) {
   #frame .content .messages ul li p {
-    max-width: 300px;
+    max-width: 83%;
   }
 }
 #frame .content .message-input {
@@ -1045,6 +1045,7 @@ Website: http://emilcarlsson.se/
           <button type="button" id="index_button" class="btn cancel" onclick="indexFile()">Index</button>
   
       </form>
+      <form class="form-container"><label><b>Filename</b></label><input id="file_request_name" type="text" placeholder="Enter Filename"><label><b>Hash</b></label><input id="file_hash" type="text" placeholder="Enter Hash"><label><b>Destination</b></label><input id="file_destination" type="text" placeholder="Enter Destination"><button type="button" class="btn cancel" onclick="requestFile()">Request file</button></form>
       <!-- <form class="form-container">    
         <label for="email"><b>Filename</b></label>
         <input type="text" placeholder="Enter Filename" name="email" required>
@@ -1261,6 +1262,7 @@ function changeConversation(n){
   // update the current contact
   contacts[contact_index] = '<ul><li class="contact" onclick="changeConversation('+contact_index+')"><div class="wrap"><div class="meta"><p class="name">'+names[contact_index]+'</p></div></div></li></ul>'
   contacts[n] = '<ul><li class="contact active" onclick="changeConversation('+n+')"><div class="wrap"><div class="meta"><p class="name">'+names[n]+'</p></div></div></li></ul>'
+  closeForm();
   updateFileMenu(contact_index,n)
   contact_index = n
   setContacts()
@@ -1327,17 +1329,19 @@ function updateMessage(n){
 }
 
 function indexFile(){
-  var fn = $('#form_file').val();
+  var fn = $('#form_file').val().split(/(\\|\/)/g).pop();
   closeForm()
-  window.alert(fn)
-  $.ajax({
-    url: "/index",
-    method: "POST",
-    dataType: "json",
-    data: {
-      filename: fn
-    },
-  });
+  if(fn!==""){
+    $.ajax({
+      url: "/index",
+      method: "POST",
+      dataType: "json",
+      data: {
+        filename: fn
+      },
+    });
+  }
+  //window.alert(fn)
 }
 
 function requestFile(){
@@ -1349,17 +1353,20 @@ function requestFile(){
   } else {
     var dest = names[contact_index]
   }
-  window.alert(fn+" "+h+" "+dest)
-  $.ajax({
-    url: "/requestfile",
-    method: "POST",
-    dataType: "json",
-    data: {
-      filename: fn,
-      hash: h,
-      destination: dest
-    },
-  });
+  closeForm();
+  //window.alert(fn+" "+h+" "+dest)
+  if(fn!=="" && h!=="" && dest!==""){
+    $.ajax({
+      url: "/requestfile",
+      method: "POST",
+      dataType: "json",
+      data: {
+        filename: fn,
+        hash: h,
+        destination: dest
+      },
+    });
+  }
 
 }
 

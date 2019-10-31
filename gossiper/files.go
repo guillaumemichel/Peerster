@@ -98,6 +98,9 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 	copy(h[:], drep.HashValue)
 
 	for _, v := range g.FileStatus {
+		if v == nil {
+			fmt.Println("\nnil v\n")
+		}
 		// a metafile we were waiting for is here !
 		if !v.MetafileOK && h == v.MetafileHash {
 			// ack the metafile
@@ -286,6 +289,9 @@ func (g *Gossiper) SendFileTo(dest, filename string) {
 func (g *Gossiper) IndexFile(filename string) {
 	// load the file from os
 	file := f.LoadFile(filename)
+	if file == nil {
+		return
+	}
 	// build the filestruct
 	fstruct, err := f.ScanFile(file)
 	if err != nil {

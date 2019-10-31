@@ -58,7 +58,6 @@ func GetGossiper1() gossiper.Gossiper {
 		GossipConn:   gossConn,
 		ClientConn:   cliConn,
 		Peers:        *peers,
-		BufSize:      u.BufferSize,
 		Mode:         mode,
 		PendingACKs:  &acks,
 		WantList:     &status,

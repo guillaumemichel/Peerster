@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+cd ..
 go build
 cd client
 go build
@@ -288,3 +289,4 @@ else
     echo -e "${GREEN}***PASSED***${NC}"
 fi
 
+rm *.out

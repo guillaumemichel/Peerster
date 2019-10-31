@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -189,6 +190,16 @@ func SyncMapCount(sm *sync.Map) uint32 {
 	}
 	sm.Range(f)
 	return count
+}
+
+// CheckFilename check if the filename is correct and return an error if not
+func CheckFilename(name string) error {
+	for _, c := range name {
+		if byte(c) == 0 || c == '/' || c == '\\' || c == ':' {
+			return errors.New("invalid filename given")
+		}
+	}
+	return nil
 }
 
 /*

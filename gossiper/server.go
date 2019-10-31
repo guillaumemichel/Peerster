@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strconv"
 
 	u "github.com/guillaumemichel/Peerster/utils"
@@ -121,8 +122,13 @@ func (g *Gossiper) StartServer() {
 		switch r.Method {
 		case "POST":
 			fn := r.FormValue("filename")
-			g.Printer.Println(fn)
-			g.IndexFile(fn)
+			err := u.CheckFilename(fn)
+			if err == nil {
+				fn = filepath.Base(fn)
+				g.IndexFile(fn)
+			} else {
+				g.Printer.Println(err)
+			}
 		}
 	}
 
@@ -133,12 +139,17 @@ func (g *Gossiper) StartServer() {
 			hash := r.FormValue("hash")
 			dest := r.FormValue("destination")
 
-			h, err := hex.DecodeString(hash)
-			if err != nil {
+			err := u.CheckFilename(fn)
+			if err == nil {
+				h, err := hex.DecodeString(hash)
+				if err != nil {
+					g.Printer.Println(err)
+					return
+				}
+				g.RequestFile(fn, dest, h)
+			} else {
 				g.Printer.Println(err)
-				return
 			}
-			g.RequestFile(fn, dest, h)
 		}
 	}
 

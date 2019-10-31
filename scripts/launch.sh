@@ -1,5 +1,8 @@
 #!/bin/bash
 
+cd ..
+go build
+
 counter=0
 n=$1
 while [ $counter -lt $n ]

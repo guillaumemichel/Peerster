@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+cd ..
 go build
 cd client
 go build
@@ -94,6 +95,6 @@ else
 	echo "***PASSED***"
 fi
 
-
+rm *.out
 
 #sleep 2
