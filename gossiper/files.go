@@ -98,10 +98,8 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 	copy(h[:], drep.HashValue)
 
 	for _, v := range g.FileStatus {
-		if v == nil {
-			fmt.Println("\nnil v\n")
-		}
 		// a metafile we were waiting for is here !
+		g.Printer.Println(v.MetafileOK, v.MetafileHash)
 		if !v.MetafileOK && h == v.MetafileHash {
 			// ack the metafile
 			v.Ack <- true
@@ -119,7 +117,7 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 						fs = fs[:len(fs)-1]
 					}
 				}
-
+				g.FileStatus = fs
 				return
 			}
 			v.MetafileOK = true

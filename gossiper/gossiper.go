@@ -15,25 +15,27 @@ import (
 
 // Gossiper : a gossiper
 type Gossiper struct {
-	Name         string                 // name of the gossiper
-	GossipAddr   *net.UDPAddr           // address of the gossip port
-	ClientAddr   *net.UDPAddr           // address of the client port (udp4)
-	GossipConn   *net.UDPConn           // connection for gossip
-	ClientConn   *net.UDPConn           // ui connection
-	GUIPort      int                    // gui port
-	Peers        []net.UDPAddr          // list of direct peers (neighbors)
-	Mode         string                 // mode of the gossiper (simple / rumor)
-	PendingACKs  *sync.Map              // map[u.AckIdentifier]u.AckValues
-	WantList     *sync.Map              // map[string]uint32
-	RumorHistory *sync.Map              // map[string][]u.HistoryMessage
-	AntiEntropy  int                    // anti entropy timeout value
-	NewMessages  *u.SyncNewMessages     // slice containing all rumors
-	Routes       *sync.Map              // map[string]string string of udp4
-	RTimer       int                    // routing timer
-	PrivateMsg   []u.PrivateMessage     // slice containing all private messages
-	Printer      *log.Logger            // printer avoid concurrent stdout write
-	FileStructs  []u.FileStruct         // known files
-	FileStatus   []*u.FileRequestStatus // status to file requests
+	Name         string             // name of the gossiper
+	GossipAddr   *net.UDPAddr       // address of the gossip port
+	ClientAddr   *net.UDPAddr       // address of the client port (udp4)
+	GossipConn   *net.UDPConn       // connection for gossip
+	ClientConn   *net.UDPConn       // ui connection
+	GUIPort      int                // gui port
+	Peers        []net.UDPAddr      // list of direct peers (neighbors)
+	Mode         string             // mode of the gossiper (simple / rumor)
+	PendingACKs  *sync.Map          // map[u.AckIdentifier]u.AckValues
+	WantList     *sync.Map          // map[string]uint32
+	RumorHistory *sync.Map          // map[string][]u.HistoryMessage
+	AntiEntropy  int                // anti entropy timeout value
+	NewMessages  *u.SyncNewMessages // slice containing all rumors
+	Routes       *sync.Map          // map[string]string string of udp4
+	RTimer       int                // routing timer
+	PrivateMsg   []u.PrivateMessage // slice containing all private messages
+	Printer      *log.Logger        // printer avoid concurrent stdout write
+	FileStructs  []u.FileStruct     // known files
+	//FileStatuses u.FileStatusList   // statuses to file requests
+	FileStatus []*u.FileRequestStatus // status to file requests
+
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
@@ -98,6 +100,10 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		fstructs := f.LoadSharedFiles()
 	*/
 	fstructs := make([]u.FileStruct, 0)
+	/*
+		statuses := make([]u.FileRequestStatus, 0)
+		fstatus := u.FileStatusList{List: statuses}
+	*/
 
 	var newMessages []u.RumorMessage
 	nm := u.SyncNewMessages{Messages: newMessages}

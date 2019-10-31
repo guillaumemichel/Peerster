@@ -132,7 +132,6 @@ type DataReply struct {
 
 // FileRequestStatus status for a file request
 type FileRequestStatus struct {
-	sync.Mutex
 	Name          string
 	Destination   string
 	MetafileHash  ShaHash
@@ -141,4 +140,10 @@ type FileRequestStatus struct {
 	ChunkCount    int
 	Data          [][]byte
 	Ack           chan bool
+}
+
+// FileStatusList list of file request statuses
+type FileStatusList struct {
+	sync.Mutex
+	List []FileRequestStatus
 }

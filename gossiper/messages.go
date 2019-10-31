@@ -115,6 +115,10 @@ func (g *Gossiper) SendMessage(text, dest string) {
 
 // RequestFile create and send a request for a file to a destination
 func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
+	if len(hash) < u.ShaSize {
+		g.Printer.Println("Error: invalid hash")
+		return
+	}
 
 	if _, ok := g.Routes.Load(dest); !ok {
 		fmt.Println("WARNING: no route to", dest, ", dropping the request")
