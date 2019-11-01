@@ -66,7 +66,10 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 
 	g.Printer.Printf("MONGERING with %s\n", targetStr)
 	// send packet
-	g.GossipConn.WriteToUDP(packet, &addr)
+	_, err := g.GossipConn.WriteToUDP(packet, &addr)
+	if err != nil {
+		g.Printer.Println("Error while sending rumor")
+	}
 
 	// creates the timeout
 	timeout := make(chan bool)
