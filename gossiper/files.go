@@ -1,8 +1,11 @@
 package gossiper
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
+	"os"
 
 	f "github.com/guillaumemichel/Peerster/files"
 	u "github.com/guillaumemichel/Peerster/utils"
@@ -27,19 +30,30 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 	found := false
 	copy(hash[:], dreq.HashValue)
 	// iterating over known structs
-	for _, fstruct := range g.FileStructs {
-		// if the wanted hash is metafilehash, data is the metafile
-		if hash == fstruct.MetafileHash {
-			data = fstruct.Metafile
-			found = true
-			break
-			// else if the desired data is a block, data <- this block
-		} else if v, ok := fstruct.Chunks[hash]; ok {
-			data = v.Data
+	for _, c := range g.Chunks {
+		if hash == c.Hash {
+			g.Printer.Println("\nRequest from", dreq.Origin)
+			data = c.Data
 			found = true
 			break
 		}
 	}
+	if !found {
+		for _, fstruct := range g.FileStructs {
+			// if the wanted hash is metafilehash, data is the metafile
+			if hash == fstruct.MetafileHash {
+				data = fstruct.Metafile
+				found = true
+				break
+				// else if the desired data is a block, data <- this block
+			} else if v, ok := fstruct.Chunks[hash]; ok {
+				data = v.Data
+				found = true
+				break
+			}
+		}
+	}
+
 	// if not found look in the files being downloaded
 	if !found {
 		for _, fstatus := range g.FileStatus {
@@ -58,7 +72,7 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 				if hash == v {
 					if i <= fstatus.ChunkCount {
 						// if block is already downloaded
-						data = fstatus.Data[i]
+						data = fstatus.Data[i].Data
 						found = true
 						break
 					} else {
@@ -92,6 +106,7 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 
 // HandleDataReply handles data replies that are received
 func (g *Gossiper) HandleDataReply(drep u.DataReply) {
+	g.Printer.Println("Got reply from", drep.Origin)
 
 	if drep.Destination != g.Name {
 		g.RouteDataReply(drep)
@@ -126,6 +141,11 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 			}
 			v.MetafileOK = true
 			v.PendingChunks = make([]u.ShaHash, 0)
+			g.Chunks = append(g.Chunks, u.FileChunk{
+				Hash: h,
+				Data: drep.Data,
+			})
+
 			for i := 0; i < len(drep.Data); i += u.ShaSize {
 				// add all hashes to pending chunks of v
 				copy(h[:], drep.Data[i:i+u.ShaSize])
@@ -133,6 +153,8 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 			}
 			//g.Printer.Println(len(v.PendingChunks), "chunks in total")
 			// request first chunk
+			// write the chunk to the list of chunks
+
 			g.RequestNextChunk(v)
 			return
 		}
@@ -149,9 +171,13 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 							hex.EncodeToString(drep.HashValue))
 						return
 					}
-
 					// append data to the one we already have
-					v.Data = append(v.Data, drep.Data)
+					g.Chunks = append(g.Chunks, u.FileChunk{
+						Number: v.ChunkCount,
+						Hash:   h,
+						Data:   drep.Data,
+					})
+					v.Data = append(v.Data, &g.Chunks[len(g.Chunks)-1])
 					// increase chunk counter
 					v.ChunkCount++
 					if v.ChunkCount == len(v.PendingChunks) {
@@ -209,14 +235,17 @@ func (g *Gossiper) ReconstructFile(fstatus *u.FileRequestStatus) {
 	chunkMap := make(map[u.ShaHash]*u.FileChunk)
 	for i, v := range fstatus.PendingChunks {
 		// create a chunk for the chunk map
-		chunk := u.FileChunk{
-			File:   &file,
-			Number: i,
-			Hash:   v,
-			Data:   fstatus.Data[i],
-		}
-		// map the hash of the chunk to the chunk
-		chunkMap[v] = &chunk
+		/*
+			chunk := u.FileChunk{
+				File:   &file,
+				Number: i,
+				Hash:   v,
+				Data:   fstatus.Data[i].Data,
+			}
+			// map the hash of the chunk to the chunk
+			chunkMap[v] = &chunk
+		*/
+		chunkMap[v] = fstatus.Data[i]
 	}
 
 	file.Chunks = chunkMap
@@ -295,7 +324,7 @@ func (g *Gossiper) IndexFile(filename string) {
 		return
 	}
 	// build the filestruct
-	fstruct, err := f.ScanFile(file)
+	fstruct, err := g.ScanFile(file)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -311,4 +340,66 @@ func (g *Gossiper) IndexFile(filename string) {
 	g.FileStructs = append(g.FileStructs, *fstruct)
 	g.PrintHashOfIndexedFile(filename,
 		hex.EncodeToString(fstruct.MetafileHash[:]))
+}
+
+// ScanFile scans a file and split it into chunks
+func (g *Gossiper) ScanFile(f *os.File) (*u.FileStruct, error) {
+	// get basic file infos
+	fstat, _ := f.Stat()
+
+	// create the file structure
+	filestruct := u.FileStruct{
+		Name: fstat.Name(),
+		Size: fstat.Size(),
+	}
+
+	// create the chunk map
+	var metafile []byte
+	chunks := make(map[u.ShaHash]*u.FileChunk)
+	tmp := make([]byte, u.ChunkSize)
+	chunkCount := 0
+
+	for {
+		n, err := f.Read(tmp)
+		if err != nil {
+			if err != io.EOF {
+				fmt.Println(err)
+				return nil, err
+			}
+			// end of file, last chunk
+			break
+		}
+		chunkCount++
+
+		// hash the read chunk
+		hash := sha256.Sum256(tmp[:n])
+		// add the hash to metafile
+		metafile = append(metafile, hash[:]...)
+		dat := make([]byte, n)
+		copy(dat, tmp[:n])
+
+		// create the file chuck
+		chunk := u.FileChunk{
+			File:   &filestruct,
+			Number: chunkCount,
+			Hash:   hash,
+			Data:   dat,
+		}
+		g.Chunks = append(g.Chunks, chunk)
+
+		// associate the hash with the chunk
+		chunks[hash] = &g.Chunks[len(g.Chunks)-1]
+	}
+
+	if u.ChunkSize < len(metafile) {
+		fmt.Println("Error: metafile too large")
+	}
+
+	// update the filestruct with metafile information and chunk count
+	filestruct.Metafile = metafile
+	filestruct.MetafileHash = sha256.Sum256(metafile)
+	filestruct.NChunks = chunkCount
+	filestruct.Chunks = chunks
+
+	return &filestruct, nil
 }

@@ -138,7 +138,7 @@ type FileRequestStatus struct {
 	MetafileOK    bool
 	PendingChunks []ShaHash
 	ChunkCount    int
-	Data          [][]byte
+	Data          []*FileChunk
 	Ack           chan bool
 }
 

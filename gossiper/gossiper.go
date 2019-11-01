@@ -35,7 +35,7 @@ type Gossiper struct {
 	FileStructs  []u.FileStruct     // known files
 	//FileStatuses u.FileStatusList   // statuses to file requests
 	FileStatus []*u.FileRequestStatus // status to file requests
-
+	Chunks     []u.FileChunk
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
@@ -94,6 +94,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	var status sync.Map
 	var routes sync.Map
 	var pm []u.PrivateMessage
+	var chunks []u.FileChunk
 	var fstatus []*u.FileRequestStatus
 
 	/*
@@ -134,6 +135,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		Printer:      printer,
 		FileStructs:  fstructs,
 		FileStatus:   fstatus,
+		Chunks:       chunks,
 	}
 }
 

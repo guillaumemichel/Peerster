@@ -129,8 +129,7 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 	var h u.ShaHash
 	copy(h[:], hash)
 
-	data := make([][]byte, 0)
-
+	chunks := make([]*u.FileChunk, 0)
 	/*
 		//check if we already have it
 		fstructs := g.FileStructs
@@ -190,7 +189,7 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 		MetafileHash: h,
 		MetafileOK:   false,
 		ChunkCount:   0,
-		Data:         data,
+		Data:         chunks,
 		Ack:          c,
 	}
 	g.FileStatus = append(g.FileStatus, &fstatus)

@@ -78,8 +78,8 @@ done
 #sleep 20
 
 pkill -f Peerster 2> /dev/null
-rm _Downloads/file* 2> /dev/null
-rm _SharedFiles/file* 2> /dev/null
+#rm _Downloads/file* 2> /dev/null
+#rm _SharedFiles/file* 2> /dev/null
 
 if [[ "$passed" == "T" ]]; then
 	echo "=D PASSED =D"
