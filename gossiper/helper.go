@@ -239,11 +239,12 @@ func (g *Gossiper) GetNewMessages(c int) []u.RumorMessage {
 // GetLastIDFromOrigin returns the last message ID received from origin
 func (g *Gossiper) GetLastIDFromOrigin(origin string) uint32 {
 	// load the history for the given origin
-	v, ok := g.WantList.Load(origin)
+	v, ok := g.RumorHistory.Load(origin)
 	if !ok {
 		// if author not found in history return 0
 		return 0
 	}
-	// if found return the waited one minus one (the last received)
-	return v.(uint32) - 1
+	// if found, we return the length of the rumor history associated with
+	// the origin, which is equal to the last message id
+	return uint32(len(v.([]u.HistoryMessage)))
 }
