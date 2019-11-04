@@ -194,10 +194,7 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 	}
 	g.FileStatus = append(g.FileStatus, &fstatus)
 
-	// print downloading metafile message
-	g.PrintDownloadMetaFile(dest, name)
-
-	g.SendFileRequest(&fstatus, req)
+	g.SendFileRequest(&fstatus, req, true)
 }
 
 // RequestNextChunk request the next chunk to dest with hash
@@ -209,15 +206,12 @@ func (g *Gossiper) RequestNextChunk(fstatus *u.FileRequestStatus) {
 		HopLimit:    u.DefaultHopLimit,
 		HashValue:   fstatus.PendingChunks[fstatus.ChunkCount][:],
 	}
-	// print downloading chunk message
-	g.PrintDownloadChunk(fstatus.Destination, fstatus.Name,
-		fstatus.ChunkCount+1)
-	g.SendFileRequest(fstatus, req)
+	g.SendFileRequest(fstatus, req, false)
 }
 
 // SendFileRequest send file request and manage timeouts
 func (g *Gossiper) SendFileRequest(fstatus *u.FileRequestStatus,
-	req u.DataRequest) {
+	req u.DataRequest, metafile bool) {
 
 	// creates the timeout
 	timeout := make(chan bool)
@@ -226,6 +220,15 @@ func (g *Gossiper) SendFileRequest(fstatus *u.FileRequestStatus,
 	for !acked {
 		// route the packet
 		g.RouteDataReq(req)
+
+		if metafile {
+			// print downloading metafile message
+			g.PrintDownloadMetaFile(req.Destination, fstatus.Name)
+		} else {
+			// print downloading chunk message
+			g.PrintDownloadChunk(fstatus.Destination, fstatus.Name,
+				fstatus.ChunkCount+1)
+		}
 
 		go func() {
 			// timeout value defined in utils/constants.go
@@ -236,7 +239,7 @@ func (g *Gossiper) SendFileRequest(fstatus *u.FileRequestStatus,
 		case <-fstatus.Ack:
 			acked = true
 		case <-timeout:
-
+			continue
 		}
 	}
 }

@@ -32,7 +32,7 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 	// iterating over known structs
 	for _, c := range g.Chunks {
 		if hash == c.Hash {
-			g.Printer.Println("\nRequest from", dreq.Origin)
+			//g.Printer.Println("\n", dreq.Origin)
 			data = c.Data
 			found = true
 			break
@@ -106,7 +106,7 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 
 // HandleDataReply handles data replies that are received
 func (g *Gossiper) HandleDataReply(drep u.DataReply) {
-	g.Printer.Println("Got reply from", drep.Origin)
+	//g.Printer.Println("Got reply from", drep.Origin)
 
 	if drep.Destination != g.Name {
 		g.RouteDataReply(drep)

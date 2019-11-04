@@ -368,7 +368,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				g.PrintExpectedRumorMode("file request")
 			}
 		} else {
-			g.Printer.Println("Error: invalide message received")
+			g.Printer.Println("Error: invalid message received")
 		}
 	}
 }

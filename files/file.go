@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	u "github.com/guillaumemichel/Peerster/utils"
 )
@@ -38,7 +39,13 @@ func LoadSharedFiles() []u.FileStruct {
 
 // LoadFile get a file from the filename
 func LoadFile(filename string) *os.File {
-	f, err := os.Open(u.SharedFolderPath + "/" + filename)
+	base, err := os.Getwd()
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	path := filepath.Join(base, u.SharedFolderName, filename)
+	f, err := os.Open(path)
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -64,9 +71,15 @@ func WriteFileToDownloads(fstruct *u.FileStruct) int64 {
 		data = append(data, fstruct.Chunks[h].Data...)
 	}
 
+	base, err := os.Getwd()
+	if err != nil {
+		fmt.Println(err)
+		return 0
+	}
+
 	// writing the file
-	err := ioutil.WriteFile(u.DownloadsFolderPath+"/"+fstruct.Name,
-		data, u.Filemode)
+	path := filepath.Join(base, u.DownloadsFolderName, fstruct.Name)
+	err = ioutil.WriteFile(path, data, u.Filemode)
 	if err != nil {
 		return 0
 	}
@@ -88,11 +101,22 @@ func checkDir(dir string) {
 // CheckDownloadDir check if download directory exists, and create it if it does
 // not exist
 func CheckDownloadDir() {
-	checkDir(u.DownloadsFolderPath)
+	base, err := os.Getwd()
+	if err != nil {
+		fmt.Println(err)
+	}
+	path := filepath.Join(base, u.DownloadsFolderName)
+	checkDir(path)
 }
 
 // CheckSharedDir check if shared files directory exists, and create it if it
 // does not exist
 func CheckSharedDir() {
-	checkDir(u.SharedFolderPath)
+	base, err := os.Getwd()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	path := filepath.Join(base, u.SharedFolderName)
+	checkDir(path)
 }

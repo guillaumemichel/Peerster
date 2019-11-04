@@ -35,14 +35,16 @@ const PrivateMessageID uint32 = 0
 // DefaultHopLimit default hop limit for private messages
 const DefaultHopLimit uint32 = 10
 
-// SharedFolderPath path to the gossiper's shared folder
-const SharedFolderPath string = "./_SharedFiles"
+// SharedFolderName path to the gossiper's shared folder
+const SharedFolderName string = "_SharedFiles"
 
-// DownloadsFolderPath path to the gossiper's downloads folder
-const DownloadsFolderPath string = "./_Downloads"
+// DownloadsFolderName path to the gossiper's downloads folder
+const DownloadsFolderName string = "_Downloads"
+
+//const DownloadsFolderPath string = SharedFolderPath
 
 // Filemode is file mode for the shared and download folders
-const Filemode os.FileMode = 0777
+const Filemode os.FileMode = 0666
 
 // ChunkSize size of a file chunk to send (8KB)
 const ChunkSize int = 8192 // 8 KB

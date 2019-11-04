@@ -8,6 +8,9 @@ import (
 // the gossiper
 func (g *Gossiper) UpdateRoute(rumor u.RumorMessage, nextHop string) {
 	origin := rumor.Origin
+	if origin == g.Name {
+		return
+	}
 	// test if the message has an higher ID than the one from which the route
 	// is already stored
 	if rumor.ID > g.GetLastIDFromOrigin(origin) {
