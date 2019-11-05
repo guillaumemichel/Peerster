@@ -19,7 +19,9 @@ func (g *Gossiper) UpdateRoute(rumor u.RumorMessage, nextHop string) {
 		// if the route exists and is different of the given one, update it
 		//if !ok || v.(string) != nextHop {
 		// update route and print message
+		g.RouteMutex.Lock()
 		g.Routes.Store(origin, nextHop)
+		g.RouteMutex.Unlock()
 		if rumor.Text != "" {
 			g.PrintUpdateRoute(origin, nextHop)
 		}

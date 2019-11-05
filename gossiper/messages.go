@@ -23,11 +23,15 @@ func (g *Gossiper) CreateSimpleMessage(name, content string) u.SimpleMessage {
 // increases the rumorCount from the Gossiper
 func (g *Gossiper) CreateRumorMessage(content string) u.RumorMessage {
 
+	//g.WantListMutex.Lock()
 	id, ok := g.WantList.Load(g.Name)
+	//g.WantListMutex.Unlock()
 	if !ok {
 		fmt.Println("Error: I don't know my name")
 	}
+	//g.WantListMutex.Lock()
 	g.WantList.Store(g.Name, uint32(id.(uint32)+1))
+	//g.WantListMutex.Unlock()
 
 	return u.RumorMessage{
 		Origin: g.Name,
@@ -76,7 +80,9 @@ func (g *Gossiper) BuildStatusPacket() u.StatusPacket {
 		return true
 	}
 
+	//g.WantListMutex.Lock()
 	g.WantList.Range(f)
+	//g.WantListMutex.Unlock()
 	sp := u.StatusPacket{Want: want}
 	return sp
 }
@@ -120,7 +126,10 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 		return
 	}
 
-	if _, ok := g.Routes.Load(dest); !ok {
+	g.RouteMutex.Lock()
+	_, ok := g.Routes.Load(dest)
+	g.RouteMutex.Unlock()
+	if !ok {
 		fmt.Println("WARNING: no route to", dest, ", dropping the request")
 		return
 	}

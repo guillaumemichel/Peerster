@@ -8,19 +8,24 @@ import (
 
 // PrintPeers : print the known peers from the gossiper
 func (g *Gossiper) PrintPeers() {
-	g.Printer.Println("PEERS", g.PeersToString())
+	//g.Printer.Println("PEERS", g.PeersToString())
 }
 
 // PeersToString : return a string containing the list of known peers
 func (g *Gossiper) PeersToString() string {
 	str := ""
 	// if not peers return empty string
-	if len(g.Peers) == 0 {
+	//g.PeerMutex.Lock()
+	l := len(g.Peers)
+	//g.PeerMutex.Unlock()
+	if l == 0 {
 		return str
 	}
+	//g.PeerMutex.Lock()
 	for _, v := range g.Peers {
 		str += v.String() + ","
 	}
+	//g.PeerMutex.Unlock()
 	// don't return the last ","
 	str = str[:len(str)-1]
 	return str
@@ -28,17 +33,17 @@ func (g *Gossiper) PeersToString() string {
 
 // PrintMessageClient : print messages from the client
 func (g *Gossiper) PrintMessageClient(text string) {
-	g.Printer.Println("CLIENT MESSAGE", text)
-	g.PrintPeers()
+	//g.Printer.Println("CLIENT MESSAGE", text)
+	//g.PrintPeers()
 }
 
 // PrintSimpleMessage : print simple messages received from gossipers
 func (g *Gossiper) PrintSimpleMessage(msg u.SimpleMessage, from string) {
 
-	g.Printer.Printf("SIMPLE MESSAGE origin %s from %s contents %s\n",
-		msg.OriginalName, from, msg.Contents)
+	//g.Printer.Printf("SIMPLE MESSAGE origin %s from %s contents %s\n",
+	//msg.OriginalName, from, msg.Contents)
 
-	g.PrintPeers()
+	//g.PrintPeers()
 }
 
 // PrintRumorMessage : print rumor messages received from gossipers
@@ -55,18 +60,18 @@ func (g *Gossiper) PrintStatusMessage(msg u.StatusPacket, from string) {
 		str += " peer " + v.Identifier + " nextID " +
 			strconv.Itoa(int(v.NextID))
 	}
-	g.Printer.Println(str)
-	g.PrintPeers()
+	//g.Printer.Println(str)
+	//g.PrintPeers()
 }
 
 // PrintFlippedCoin : prints flipped coin message
 func (g *Gossiper) PrintFlippedCoin(addr string) {
-	g.Printer.Printf("FLIPPED COIN sending rumor to %s\n", addr)
+	//g.Printer.Printf("FLIPPED COIN sending rumor to %s\n", addr)
 }
 
 // PrintInSync : prints in sync message
 func (g *Gossiper) PrintInSync(addr string) {
-	g.Printer.Printf("IN SYNC WITH %s\n", addr)
+	//g.Printer.Printf("IN SYNC WITH %s\n", addr)
 }
 
 // PrintUpdateRoute prints the DSDV update message
@@ -97,14 +102,14 @@ func (g *Gossiper) PrintReconstructFile(name string) {
 
 // PrintUnknownMode unknown mode message
 func (g *Gossiper) PrintUnknownMode() {
-	g.Printer.Println("Error: Unknown gossiper mode!")
+	//g.Printer.Println("Error: Unknown gossiper mode!")
 }
 
 // PrintExpectedRumorMode print expected rumor mode message if in simple mode
 // and complicated message is received
 func (g *Gossiper) PrintExpectedRumorMode(message string) {
-	g.Printer.Println("Warning: gossiper in simple mode received a", message,
-		", discarding it")
+	/*g.Printer.Println("Warning: gossiper in simple mode received a", message,
+	", discarding it")*/
 }
 
 // PrintSentPrivateMessage print leaving private message
@@ -114,5 +119,5 @@ func (g *Gossiper) PrintSentPrivateMessage(dest, text string) {
 
 // PrintHashOfIndexedFile print the hash of an indexed file
 func (g *Gossiper) PrintHashOfIndexedFile(file, hash string) {
-	g.Printer.Printf("INDEXED file %s, hash is %s\n", file, hash)
+	//g.Printer.Printf("INDEXED file %s, hash is %s\n", file, hash)
 }

@@ -52,6 +52,8 @@ func (g *Gossiper) PrintWantlist() {
 		return true
 	}
 	fmt.Println("\nDEBUG: Printing wantlist")
+	//g.WantListMutex.Lock()
 	g.WantList.Range(f)
+	//g.WantListMutex.Unlock()
 	fmt.Println()
 }

@@ -15,27 +15,39 @@ import (
 
 // Gossiper : a gossiper
 type Gossiper struct {
-	Name         string             // name of the gossiper
-	GossipAddr   *net.UDPAddr       // address of the gossip port
-	ClientAddr   *net.UDPAddr       // address of the client port (udp4)
-	GossipConn   *net.UDPConn       // connection for gossip
-	ClientConn   *net.UDPConn       // ui connection
-	GUIPort      int                // gui port
-	Peers        []net.UDPAddr      // list of direct peers (neighbors)
-	Mode         string             // mode of the gossiper (simple / rumor)
-	PendingACKs  *sync.Map          // map[u.AckIdentifier]u.AckValues
-	WantList     *sync.Map          // map[string]uint32
-	RumorHistory *sync.Map          // map[string][]u.HistoryMessage
-	AntiEntropy  int                // anti entropy timeout value
-	NewMessages  *u.SyncNewMessages // slice containing all rumors
-	Routes       *sync.Map          // map[string]string string of udp4
-	RTimer       int                // routing timer
-	PrivateMsg   []u.PrivateMessage // slice containing all private messages
-	Printer      *log.Logger        // printer avoid concurrent stdout write
-	FileStructs  []u.FileStruct     // known files
-	//FileStatuses u.FileStatusList   // statuses to file requests
-	FileStatus []*u.FileRequestStatus // status to file requests
-	Chunks     []u.FileChunk
+	Name       string       // name of the gossiper
+	GossipAddr *net.UDPAddr // address of the gossip port
+	ClientAddr *net.UDPAddr // address of the client port (udp4)
+	GossipConn *net.UDPConn // connection for gossip
+	ClientConn *net.UDPConn // ui connection
+	GUIPort    int          // gui port
+
+	Peers []net.UDPAddr // list of direct peers (neighbors)
+	//PeerMutex *sync.Mutex
+
+	Mode string // mode of the gossiper (simple / rumor)
+
+	PendingACKs *sync.Map // map[u.AckIdentifier]u.AckValues
+	//ACKMutex    *sync.Mutex
+
+	WantList *sync.Map // map[string]uint32
+	//WantListMutex *sync.Mutex
+
+	RumorHistory *sync.Map // map[string][]u.HistoryMessage
+	//HistoryMutex *sync.Mutex
+
+	AntiEntropy int                // anti entropy timeout value
+	NewMessages *u.SyncNewMessages // slice containing all rumors
+
+	Routes     *sync.Map   // map[string]string string of udp4
+	RouteMutex *sync.Mutex // mutex for the routes map
+
+	RTimer      int                    // routing timer
+	PrivateMsg  []u.PrivateMessage     // slice containing all private messages
+	Printer     *log.Logger            // printer avoid concurrent stdout write
+	FileStructs []u.FileStruct         // known files
+	FileStatus  []*u.FileRequestStatus // status to file requests
+	Chunks      []u.FileChunk          // list of chunks that the gossiper has
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
@@ -116,26 +128,31 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	printer := log.New(os.Stdout, "", 0)
 
 	return &Gossiper{
-		Name:         *name,
-		GossipAddr:   gossAddr,
-		ClientAddr:   cliAddr,
-		GossipConn:   gossConn,
-		ClientConn:   cliConn,
-		Peers:        peers,
-		Mode:         mode,
-		PendingACKs:  &acks,
-		WantList:     &status,
+		Name:       *name,
+		GossipAddr: gossAddr,
+		ClientAddr: cliAddr,
+		GossipConn: gossConn,
+		ClientConn: cliConn,
+		Peers:      peers,
+		//PeerMutex:     &sync.Mutex{},
+		Mode:        mode,
+		PendingACKs: &acks,
+		//ACKMutex:      &sync.Mutex{},
+		WantList: &status,
+		//WantListMutex: &sync.Mutex{},
 		RumorHistory: &history,
-		AntiEntropy:  antiE,
-		NewMessages:  &nm,
-		GUIPort:      guiPort,
-		Routes:       &routes,
-		RTimer:       rtimer,
-		PrivateMsg:   pm,
-		Printer:      printer,
-		FileStructs:  fstructs,
-		FileStatus:   fstatus,
-		Chunks:       chunks,
+		//HistoryMutex:  &sync.Mutex{},
+		AntiEntropy: antiE,
+		NewMessages: &nm,
+		GUIPort:     guiPort,
+		Routes:      &routes,
+		RouteMutex:  &sync.Mutex{},
+		RTimer:      rtimer,
+		PrivateMsg:  pm,
+		Printer:     printer,
+		FileStructs: fstructs,
+		FileStatus:  fstatus,
+		Chunks:      chunks,
 	}
 }
 
@@ -166,7 +183,10 @@ func (g *Gossiper) DoAntiEntropy() {
 	// if anti entropy is 0 (or less) anti entropy disabled
 	if g.AntiEntropy > 0 {
 		for {
-			if len(g.Peers) > 0 {
+			//g.PeerMutex.Lock()
+			l := len(g.Peers)
+			//g.PeerMutex.Unlock()
+			if l > 0 {
 				// send status to random peer
 				target := g.GetRandPeer()
 				g.SendStatus(target)

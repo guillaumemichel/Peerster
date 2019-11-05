@@ -10,11 +10,13 @@ import (
 
 // Broadcast : Sends a message to all known gossipers
 func (g *Gossiper) Broadcast(packet []byte, sender *net.UDPAddr) {
+	//g.PeerMutex.Lock()
 	for _, v := range g.Peers {
 		if !u.EqualAddr(&v, sender) {
 			g.GossipConn.WriteToUDP(packet, &v)
 		}
 	}
+	//g.PeerMutex.Unlock()
 }
 
 // SendStatus : send status/ack to given peer
@@ -62,7 +64,9 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 		Channel:        make(chan bool),
 		InitialMessage: initial,
 	}
+	//g.ACKMutex.Lock()
 	g.PendingACKs.Store(*pendingACKStr, values)
+	//g.ACKMutex.Unlock()
 
 	g.Printer.Printf("MONGERING with %s\n", targetStr)
 	// send packet
@@ -82,13 +86,17 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 	ackChan := values.Channel
 	select {
 	case <-timeout: // TIMEOUT
+		//g.ACKMutex.Lock()
 		g.PendingACKs.Delete(*pendingACKStr)
+		//g.ACKMutex.Unlock()
 		// send the initial packet to a random peer
 		packet := g.HistoryMessageToByte(initial)
 		g.SendRumorToRandom(packet, rumor, initial)
 		return
 	case <-ackChan: // ACK
+		//g.ACKMutex.Lock()
 		g.PendingACKs.Delete(*pendingACKStr)
+		//g.ACKMutex.Unlock()
 		return
 	}
 }
@@ -123,7 +131,10 @@ func (g *Gossiper) SendRumorToRandomWithoutPacketNorInitial(
 // RoutePacket routes private messages, data requests and replies to next hop
 func (g *Gossiper) RoutePacket(dst string, gp u.GossipPacket) {
 	// load the next hop to destination
+	g.RouteMutex.Lock()
 	v, ok := g.Routes.Load(dst)
+	g.RouteMutex.Unlock()
+
 	if !ok {
 		fmt.Println("No route to", dst)
 		return
@@ -389,7 +400,9 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 	for _, v := range status.Want {
 		// if origin no in want list, add it
 		if _, ok := g.WantList.Load(v.Identifier); !ok {
+			//g.WantListMutex.Lock()
 			g.WantList.Store(v.Identifier, uint32(1))
+			//g.WantListMutex.Unlock()
 		}
 
 		// acknowledge rumor with ID lower than the ack we just recieved
@@ -401,7 +414,10 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 				ID:     i,
 			}
 			// if it is pending, we acknowledge it by writing to the channel
-			if va, ok := g.PendingACKs.Load(identifier); ok {
+			//g.ACKMutex.Lock()
+			va, ok := g.PendingACKs.Load(identifier)
+			//g.ACKMutex.Unlock()
+			if ok {
 				// write to the corresponding channel to stop timer in
 				//rumor message
 				va.(u.AckValues).Channel <- true
@@ -416,7 +432,9 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 	for _, v := range status.Want {
 		// if v.NextID is lower than the message we want, then we have stored
 		// the message that is wanted, so we send it to peer and return
+		//g.WantListMutex.Lock()
 		wantedID, _ := g.WantList.Load(v.Identifier)
+		//g.WantListMutex.Unlock()
 		if v.NextID < wantedID.(uint32) {
 			// reference of the message to recover from history
 			ref := u.MessageReference{Origin: v.Identifier, ID: v.NextID}
@@ -452,7 +470,9 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 		}
 		// if identifier not found in status, send 1st packet of that identifier
 		if !found {
+			//g.HistoryMutex.Lock()
 			array, ok := g.RumorHistory.Load(identifier)
+			//g.HistoryMutex.Unlock()
 			if ok && array.([]u.HistoryMessage)[0].ID == 1 {
 				// create the rumor
 				rumor := u.RumorMessage{
@@ -475,12 +495,16 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 		}
 		return true
 	}
+	//g.WantListMutex.Lock()
 	g.WantList.Range(f)
+	//g.WantListMutex.Unlock()
 
 	// check if g is late on peer, and request messages if true
 	for _, v := range status.Want {
 		// if nextID > a message we want, request it
+		//g.WantListMutex.Lock()
 		wantedID, _ := g.WantList.Load(v.Identifier)
+		//g.WantListMutex.Unlock()
 		if v.NextID > wantedID.(uint32) {
 			// send status to request it
 			g.SendStatus(addr)
