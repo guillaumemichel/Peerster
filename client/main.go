@@ -33,6 +33,8 @@ func main() {
 	file := flag.String("file", "", "file to be indexed by the gossiper")
 	req := flag.String("request", "",
 		"request a chunk or metafile of this hash")
+	kw := flag.String("keywords", "", "keywords for file search")
+	bg := flag.Int("budget", u.DefaultSearchBudget, "budget of the file search")
 
 	flag.Parse()
 	flag.Usage = func() {
@@ -60,9 +62,10 @@ func main() {
 	bDest := dest != nil && *dest != ""
 	bFile := file != nil && *file != ""
 	bReq := req != nil && *req != ""
+	bKw := kw != nil && *kw != ""
 
-	// simple message or rumor message
-	if bText && !bDest && !bFile && !bReq {
+	if bText && !bDest && !bFile && !bReq && !bKw {
+		// simple message or rumor message
 		// create the packet to send
 		message = u.Message{
 			Text:        *msg,
@@ -70,7 +73,7 @@ func main() {
 			File:        nil,
 			Request:     nil,
 		}
-	} else if bText && bDest && !bFile && !bReq {
+	} else if bText && bDest && !bFile && !bReq && !bKw {
 		// private message
 		// create the packet to send
 		message = u.Message{
@@ -80,7 +83,7 @@ func main() {
 			Request:     nil,
 		}
 
-	} else if !bText && !bDest && bFile && !bReq {
+	} else if !bText && !bDest && bFile && !bReq && !bKw {
 		// indexing file
 		// create the send file message
 		message = u.Message{
@@ -89,7 +92,7 @@ func main() {
 			Text:        "",
 			Request:     nil,
 		}
-	} else if !bText && bDest && bFile && bReq {
+	} else if !bText && bDest && bFile && bReq && !bKw {
 		// requesting file
 		// cast string request to []byte
 		hashByte, err := hex.DecodeString(*req)
@@ -102,6 +105,9 @@ func main() {
 			File:        file,
 			Request:     &hashByte,
 		}
+	} else if !bText && !bDest && !bReq && bKw {
+		// file search
+		// ???
 	} else {
 		BadArgument()
 	}

@@ -122,7 +122,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	nm := u.SyncNewMessages{Messages: newMessages}
 
 	if *name == "" {
-		*name = "Gossiper"
+		*name = u.DefaultGossiperName
 	}
 	status.Store(*name, uint32(1))
 	printer := log.New(os.Stdout, "", 0)

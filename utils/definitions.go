@@ -43,12 +43,14 @@ type StatusPacket struct {
 
 // GossipPacket : default gossip packet used by the Peerster
 type GossipPacket struct {
-	Simple      *SimpleMessage
-	Rumor       *RumorMessage
-	Status      *StatusPacket
-	Private     *PrivateMessage
-	DataRequest *DataRequest
-	DataReply   *DataReply
+	Simple        *SimpleMessage
+	Rumor         *RumorMessage
+	Status        *StatusPacket
+	Private       *PrivateMessage
+	DataRequest   *DataRequest
+	DataReply     *DataReply
+	SearchRequest *SearchRequest
+	SearchReply   *SearchReply
 }
 
 // PrivateMessage : private message structure
@@ -146,4 +148,27 @@ type FileRequestStatus struct {
 type FileStatusList struct {
 	sync.Mutex
 	List []FileRequestStatus
+}
+
+// SearchRequest search request packet
+type SearchRequest struct {
+	Origin   string
+	Budget   uint64
+	Keywords []string
+}
+
+// SearchReply search reply packet
+type SearchReply struct {
+	Origin      string
+	Destination string
+	HopLimit    uint32
+	Results     []*SearchResult
+}
+
+// SearchResult search result included in search reply
+type SearchResult struct {
+	FileName     string
+	MetafileHash []byte
+	ChunkMap     []uint64
+	ChunkCount   uint64
 }

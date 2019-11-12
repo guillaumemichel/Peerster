@@ -159,7 +159,6 @@ func (g *Gossiper) DealWithPrivateMessage(pm u.PrivateMessage) {
 	// if the destination is g, print the private message to console
 	if dst == g.Name {
 		g.PrintPrivateMessage(pm)
-		// TODO concurrency
 		g.PrivateMsg = append(g.PrivateMsg, pm)
 	} else {
 		// decrease the hop limit
