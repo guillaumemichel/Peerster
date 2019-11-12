@@ -87,11 +87,11 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 			}
 		}
 	}
-	/*if !found {
+	if !found {
 		// hash not found
 		g.Printer.Println("Warning: data requested and not found")
 		return
-	}*/
+	}
 	// create the data reply
 	drep := u.DataReply{
 		Origin:      g.Name,
@@ -151,7 +151,6 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 				copy(h[:], drep.Data[i:i+u.ShaSize])
 				v.PendingChunks = append(v.PendingChunks, h)
 			}
-			//g.Printer.Println(len(v.PendingChunks), "chunks in total")
 			// request first chunk
 			// write the chunk to the list of chunks
 
@@ -212,7 +211,7 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 	g.FileStatus = append(g.FileStatus, &fstatus)
 	g.Printer.Println("RECEIVED metafile", hex.EncodeToString(drep.HashValue),
 		"from", drep.Origin)
-	//g.Printer.Println("Warning: received data reply that I don't want!")
+	g.Printer.Println("Warning: received data reply that I don't want!")
 }
 
 // ReconstructFile reconstruct a file after received all the chunks
@@ -234,17 +233,6 @@ func (g *Gossiper) ReconstructFile(fstatus *u.FileRequestStatus) {
 	// create the chunk map
 	chunkMap := make(map[u.ShaHash]*u.FileChunk)
 	for i, v := range fstatus.PendingChunks {
-		// create a chunk for the chunk map
-		/*
-			chunk := u.FileChunk{
-				File:   &file,
-				Number: i,
-				Hash:   v,
-				Data:   fstatus.Data[i].Data,
-			}
-			// map the hash of the chunk to the chunk
-			chunkMap[v] = &chunk
-		*/
 		chunkMap[v] = fstatus.Data[i]
 	}
 

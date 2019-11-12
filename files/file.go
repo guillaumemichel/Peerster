@@ -10,33 +10,6 @@ import (
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
-/*
-// LoadSharedFiles Load all files from _SHAREDFILES and return them, in order
-// to store them in the gossiper
-func LoadSharedFiles() []u.FileStruct {
-	// read the shared files directory
-	files, err := ioutil.ReadDir(u.SharedFolderPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// we assume that there is no subdirectory
-	var fileStructs []u.FileStruct
-	// iterate over the files in this directory
-	for _, f := range files {
-		// create the filestruct from the filename
-		fs, err := ScanFile(LoadFile(f.Name()))
-		if err != nil {
-			log.Fatal(err)
-			return nil
-		}
-		fileStructs = append(fileStructs, *fs)
-	}
-
-	return fileStructs
-}
-*/
-
 // LoadFile get a file from the filename
 func LoadFile(filename string) *os.File {
 	base, err := os.Getwd()
@@ -63,8 +36,6 @@ func WriteFileToDownloads(fstruct *u.FileStruct) int64 {
 		// translate hash []byte to shahash (in h)
 		copy(h[:], fstruct.Metafile[i:i+u.ShaSize])
 		// load the data from the chunk in the same order
-		// fmt.Println(h)
-		//fmt.Println(string(fstruct.Chunks[h].Data))
 		if h != sha256.Sum256(fstruct.Chunks[h].Data) {
 			fmt.Println("mismatch between data and hash")
 		}

@@ -216,8 +216,6 @@ func (g *Gossiper) WriteRumorToHistory(rumor u.RumorMessage) bool {
 		g.RumorHistory.Store(origin, originHistory)
 		//g.HistoryMutex.Unlock()
 
-		// NOOOOOOOO MUTEX CAN BE SHITTY AROUND HERE
-
 		// update the wantlist to the next message
 		//g.WantListMutex.Lock()
 		curr, _ := g.WantList.Load(origin)
@@ -262,16 +260,6 @@ func (g *Gossiper) GetNewMessages(c int) []u.RumorMessage {
 		return nil
 	}
 	return messages[c:]
-	/*
-			var out []u.RumorMessage
-		// get the new messages to out
-		for _, v := range g.NewMessages.Messages {
-			out = append(out, v)
-		}
-		// can be removed for complete history
-		//g.NewMessages.Messages = make([]u.RumorMessage, 0)
-
-		return out*/
 }
 
 // GetLastIDFromOrigin returns the last message ID received from origin
