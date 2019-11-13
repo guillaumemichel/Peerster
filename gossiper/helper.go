@@ -105,7 +105,7 @@ func (g *Gossiper) AddPeer(addr *net.UDPAddr) {
 // ReceiveOK : return false if message too long to be handled, true otherwise
 func (g *Gossiper) ReceiveOK(ok bool, rcvBytes []byte) bool {
 	if !ok && len(rcvBytes) >= u.BufferSize {
-		log.Printf(`Warning: incoming message possibly larger than %d bytes 
+		log.Printf(`Warning: incoming message possibly larger than %d bytes
 			couldn't be read!\n`, u.BufferSize)
 		return false
 	}

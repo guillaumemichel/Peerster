@@ -121,3 +121,21 @@ func (g *Gossiper) PrintSentPrivateMessage(dest, text string) {
 func (g *Gossiper) PrintHashOfIndexedFile(file, hash string) {
 	g.Printer.Printf("INDEXED file %s, hash is %s\n", file, hash)
 }
+
+// PrintFoundMatch print found match after file search
+func (g *Gossiper) PrintFoundMatch(filename, peer, metahash string, chunks []uint64) {
+	c := ""
+	for i, v := range chunks {
+		if i != 0 {
+			c += ","
+		}
+		c += strconv.Itoa(int(v))
+	}
+	g.Printer.Printf("FOUND match %s at %s metafile=%s chunks=%s\n",
+		filename, peer, metahash, c)
+}
+
+// PrintSearchFinished print search finished message
+func (g *Gossiper) PrintSearchFinished() {
+	g.Printer.Println("SEARCH FINISHED")
+}

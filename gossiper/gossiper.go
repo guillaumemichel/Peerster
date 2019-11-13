@@ -48,6 +48,9 @@ type Gossiper struct {
 	FileStructs []u.FileStruct         // known files
 	FileStatus  []*u.FileRequestStatus // status to file requests
 	Chunks      []u.FileChunk          // list of chunks that the gossiper has
+
+	SearchStatuses []u.SearchStatus // list of current searches
+	SearchMutex    *sync.Mutex
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
@@ -108,6 +111,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	var pm []u.PrivateMessage
 	var chunks []u.FileChunk
 	var fstatus []*u.FileRequestStatus
+	var searchs []u.SearchStatus
 
 	/*
 		fstructs := f.LoadSharedFiles()
@@ -142,17 +146,19 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		//WantListMutex: &sync.Mutex{},
 		RumorHistory: &history,
 		//HistoryMutex:  &sync.Mutex{},
-		AntiEntropy: antiE,
-		NewMessages: &nm,
-		GUIPort:     guiPort,
-		Routes:      &routes,
-		RouteMutex:  &sync.Mutex{},
-		RTimer:      rtimer,
-		PrivateMsg:  pm,
-		Printer:     printer,
-		FileStructs: fstructs,
-		FileStatus:  fstatus,
-		Chunks:      chunks,
+		AntiEntropy:    antiE,
+		NewMessages:    &nm,
+		GUIPort:        guiPort,
+		Routes:         &routes,
+		RouteMutex:     &sync.Mutex{},
+		RTimer:         rtimer,
+		PrivateMsg:     pm,
+		Printer:        printer,
+		FileStructs:    fstructs,
+		FileStatus:     fstatus,
+		Chunks:         chunks,
+		SearchStatuses: searchs,
+		SearchMutex:    &sync.Mutex{},
 	}
 }
 

@@ -146,6 +146,12 @@ func TestMessageType(p *GossipPacket) bool {
 	if p.DataRequest != nil {
 		n++
 	}
+	if p.SearchRequest != nil {
+		n++
+	}
+	if p.SearchReply != nil {
+		n++
+	}
 	if n > 1 {
 		fmt.Println("Error: the received GossipPacket contains multiple",
 			"messages")
@@ -213,6 +219,68 @@ func SplitKeywords(kw string) []string {
 		}
 	}
 	return keywords
+}
+
+// ChooseCRandomAmongN select c distinct random number between 0 and n
+func ChooseCRandomAmongN(c, n int) []int {
+	if c > n {
+		fmt.Println("Error: cannot choose", c, "distinct elements among",
+			n, "elements")
+		return nil
+	}
+	// create a list containing all numbers from 0 to n
+	currList := make([]int, n)
+	for i := 0; i < n; i++ {
+		currList[i] = i
+	}
+
+	toret := make([]int, c)
+	i := 0
+	for i < c {
+		// select a random number among the rest of the list
+		r := GetRealRand(n - i)
+		toret[i] = currList[r]
+
+		// update the list to remove the assigned value
+		currList[r] = currList[len(currList)-1]
+		currList = currList[:len(currList)-1]
+		i++
+	}
+
+	return toret
+}
+
+// IntInSlice return true if a is in slice list
+func IntInSlice(a int, list []int) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+// SameSearch compare a search status with a search request, return true if the
+// search is the same
+func SameSearch(search SearchStatus, req SearchRequest) bool {
+	if search.Origin == req.Origin &&
+		len(search.Keywords) == len(req.Keywords) {
+
+		same := true
+		// compare all words from req and s.Keywords
+		for _, w := range req.Keywords {
+			// if a word of req is not in s.Keywords they are not the same
+			if _, ok := search.Keywords[w]; !ok {
+				same = false
+				break
+			}
+		}
+		if same {
+			// the request is the same as search
+			return true
+		}
+	}
+	return false
 }
 
 /*

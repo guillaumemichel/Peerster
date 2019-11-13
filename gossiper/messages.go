@@ -138,7 +138,6 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 	var h u.ShaHash
 	copy(h[:], hash)
 
-	chunks := make([]*u.FileChunk, 0)
 	/*
 		//check if we already have it
 		fstructs := g.FileStructs
@@ -190,16 +189,36 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 		HashValue:   hash,
 	}
 
+	var fstruct *u.FileStruct
+	for _, fs := range g.FileStructs {
+		if fs.MetafileHash == h {
+			if fs.Done {
+				g.Printer.Println("Warning: file already downloaded")
+				return
+			}
+			fstruct = &fs
+			fstruct.Name = name
+		}
+	}
+
+	chunks := make(map[u.ShaHash]*u.FileChunk)
+	if fstruct == nil {
+		fstruct = &u.FileStruct{
+			Name:         name,
+			MetafileHash: h,
+			Done:         false,
+			Chunks:       chunks,
+		}
+	}
+
 	c := make(chan bool)
 	// create the new file status
 	fstatus := u.FileRequestStatus{
-		Name:         name,
-		Destination:  dest,
-		MetafileHash: h,
-		MetafileOK:   false,
-		ChunkCount:   0,
-		Data:         chunks,
-		Ack:          c,
+		File:        fstruct,
+		Destination: dest,
+		MetafileOK:  false,
+		ChunkCount:  0,
+		Ack:         c,
 	}
 	g.FileStatus = append(g.FileStatus, &fstatus)
 
@@ -232,10 +251,10 @@ func (g *Gossiper) SendFileRequest(fstatus *u.FileRequestStatus,
 
 		if metafile {
 			// print downloading metafile message
-			g.PrintDownloadMetaFile(req.Destination, fstatus.Name)
+			g.PrintDownloadMetaFile(req.Destination, fstatus.File.Name)
 		} else {
 			// print downloading chunk message
-			g.PrintDownloadChunk(fstatus.Destination, fstatus.Name,
+			g.PrintDownloadChunk(fstatus.Destination, fstatus.File.Name,
 				fstatus.ChunkCount+1)
 		}
 

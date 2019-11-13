@@ -115,6 +115,7 @@ type FileStruct struct {
 	Metafile     []byte
 	NChunks      int
 	Chunks       map[ShaHash]*FileChunk
+	Done         bool
 }
 
 // DataRequest data request packets
@@ -136,13 +137,11 @@ type DataReply struct {
 
 // FileRequestStatus status for a file request
 type FileRequestStatus struct {
-	Name          string
+	File          *FileStruct
 	Destination   string
-	MetafileHash  ShaHash
 	MetafileOK    bool
 	PendingChunks []ShaHash
 	ChunkCount    int
-	Data          []*FileChunk
 	Ack           chan bool
 }
 
@@ -173,4 +172,13 @@ type SearchResult struct {
 	MetafileHash []byte
 	ChunkMap     []uint64
 	ChunkCount   uint64
+}
+
+// SearchStatus search status kept at the gossiper
+type SearchStatus struct {
+	Origin   string
+	Keywords map[string]bool
+}
+
+type ChunkMap struct {
 }

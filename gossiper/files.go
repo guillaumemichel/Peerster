@@ -38,6 +38,7 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 			break
 		}
 	}
+
 	if !found {
 		for _, fstruct := range g.FileStructs {
 			// if the wanted hash is metafilehash, data is the metafile
@@ -58,7 +59,7 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 	if !found {
 		for _, fstatus := range g.FileStatus {
 			// if the wanted hash is metafilehash, data is the pending chunk
-			if hash == fstatus.MetafileHash {
+			if hash == fstatus.File.MetafileHash {
 				// convert pending chunks to metafile
 				for _, v := range fstatus.PendingChunks {
 					data = append(data, v[:]...)
@@ -72,7 +73,8 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 				if hash == v {
 					if i <= fstatus.ChunkCount {
 						// if block is already downloaded
-						data = fstatus.Data[i].Data
+						//data = fstatus.Data[i].Data
+						data = fstatus.File.Chunks[hash].Data
 						found = true
 						break
 					} else {
@@ -87,6 +89,7 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 			}
 		}
 	}
+
 	if !found {
 		// hash not found
 		g.Printer.Println("Warning: data requested and not found")
@@ -119,7 +122,7 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 	statuses := g.FileStatus
 	for _, v := range statuses {
 		// a metafile we were waiting for is here !
-		if !v.MetafileOK && h == v.MetafileHash {
+		if !v.MetafileOK && h == v.File.MetafileHash {
 			// ack the metafile
 			v.Ack <- true
 			// check if peer had the file
@@ -140,17 +143,22 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 				return
 			}
 			v.MetafileOK = true
-			v.PendingChunks = make([]u.ShaHash, 0)
 			g.Chunks = append(g.Chunks, u.FileChunk{
+				File: v.File,
 				Hash: h,
 				Data: drep.Data,
 			})
 
+			v.PendingChunks = make([]u.ShaHash, 0)
 			for i := 0; i < len(drep.Data); i += u.ShaSize {
 				// add all hashes to pending chunks of v
 				copy(h[:], drep.Data[i:i+u.ShaSize])
 				v.PendingChunks = append(v.PendingChunks, h)
 			}
+
+			v.File.Metafile = drep.Data
+			v.File.NChunks = len(v.PendingChunks)
+
 			// request first chunk
 			// write the chunk to the list of chunks
 
@@ -172,11 +180,13 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 					}
 					// append data to the one we already have
 					g.Chunks = append(g.Chunks, u.FileChunk{
+						File:   v.File,
 						Number: v.ChunkCount,
 						Hash:   h,
 						Data:   drep.Data,
 					})
-					v.Data = append(v.Data, &g.Chunks[len(g.Chunks)-1])
+					v.File.Chunks[h] = &g.Chunks[len(g.Chunks)-1]
+					//v.Data = append(v.Data, &g.Chunks[len(g.Chunks)-1])
 					// increase chunk counter
 					v.ChunkCount++
 					if v.ChunkCount == len(v.PendingChunks) {
@@ -191,52 +201,60 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 			}
 		}
 	}
-	// not wanted! register the file
-	copy(h[:], drep.HashValue)
-	metaf := make([]u.ShaHash, 0)
-	for i := 0; i < len(drep.Data); i += u.ShaSize {
-		// add all hashes to pending chunks of v
-		copy(h[:], drep.Data[i:i+u.ShaSize])
-		metaf = append(metaf, h)
-	}
-	c := make(chan bool)
+	/*
+		// not wanted! register the file
+		copy(h[:], drep.HashValue)
+		metaf := make([]u.ShaHash, 0)
+		for i := 0; i < len(drep.Data); i += u.ShaSize {
+			// add all hashes to pending chunks of v
+			copy(h[:], drep.Data[i:i+u.ShaSize])
+			metaf = append(metaf, h)
+		}
+		c := make(chan bool)
 
-	fstatus := u.FileRequestStatus{
-		MetafileHash:  h,
-		PendingChunks: metaf,
-		MetafileOK:    true,
-		ChunkCount:    -1, // -1 indicate that we received spontaneously a mfile
-		Ack:           c,
-	}
-	g.FileStatus = append(g.FileStatus, &fstatus)
-	g.Printer.Println("RECEIVED metafile", hex.EncodeToString(drep.HashValue),
-		"from", drep.Origin)
-	g.Printer.Println("Warning: received data reply that I don't want!")
+		fstatus := u.FileRequestStatus{
+			MetafileHash:  h,
+			PendingChunks: metaf,
+			MetafileOK:    true,
+			ChunkCount:    -1, // -1 indicate that we received spontaneously a mfile
+			Ack:           c,
+		}
+		g.FileStatus = append(g.FileStatus, &fstatus)
+		g.Printer.Println("RECEIVED metafile", hex.EncodeToString(drep.HashValue),
+			"from", drep.Origin)
+		g.Printer.Println("Warning: received data reply that I don't want!")
+	*/
 }
 
 // ReconstructFile reconstruct a file after received all the chunks
 func (g *Gossiper) ReconstructFile(fstatus *u.FileRequestStatus) {
 	// translate pending chunks to metafile
-	meta := make([]byte, 0)
-	for _, v := range fstatus.PendingChunks {
-		meta = append(meta, v[:]...)
-	}
 
-	// create he filestruct
-	file := u.FileStruct{
-		Name:         fstatus.Name,
-		MetafileHash: fstatus.MetafileHash,
-		Metafile:     meta,
-		NChunks:      fstatus.ChunkCount,
-	}
+	fstatus.File.Done = true
+	file := fstatus.File
 
-	// create the chunk map
-	chunkMap := make(map[u.ShaHash]*u.FileChunk)
-	for i, v := range fstatus.PendingChunks {
-		chunkMap[v] = fstatus.Data[i]
-	}
+	/*
+		meta := make([]byte, 0)
+		for _, v := range fstatus.PendingChunks {
+			meta = append(meta, v[:]...)
+		}
 
-	file.Chunks = chunkMap
+		// create he filestruct
+		file := u.FileStruct{
+			Name:         fstatus.Name,
+			MetafileHash: fstatus.MetafileHash,
+			Metafile:     meta,
+			NChunks:      fstatus.ChunkCount,
+		}
+
+		// create the chunk map
+		chunkMap := make(map[u.ShaHash]*u.FileChunk)
+		for i, v := range fstatus.PendingChunks {
+			chunkMap[v] = fstatus.Data[i]
+		}
+
+		file.Chunks = chunkMap
+	*/
 
 	// delete the filestatus from g
 	found := false
@@ -260,10 +278,11 @@ func (g *Gossiper) ReconstructFile(fstatus *u.FileRequestStatus) {
 	g.PrintReconstructFile(file.Name)
 
 	// append the filestruct to known files
-	file.Size = f.WriteFileToDownloads(&file)
-	g.FileStructs = append(g.FileStructs, file)
+	file.Size = f.WriteFileToDownloads(file)
+	//g.FileStructs = append(g.FileStructs, file)
 }
 
+/*
 // SendFileTo sends a file to dest
 func (g *Gossiper) SendFileTo(dest, filename string) {
 	//resolve file
@@ -303,6 +322,7 @@ func (g *Gossiper) SendFileTo(dest, filename string) {
 	// handle the data request, this will generate the corresponding data reply
 	g.HandleDataReq(dreq)
 }
+*/
 
 // IndexFile indexes a file from the given filename and adds it to the gossiper
 func (g *Gossiper) IndexFile(filename string) {
@@ -339,6 +359,7 @@ func (g *Gossiper) ScanFile(f *os.File) (*u.FileStruct, error) {
 	filestruct := u.FileStruct{
 		Name: fstat.Name(),
 		Size: fstat.Size(),
+		Done: true,
 	}
 
 	// create the chunk map

@@ -146,11 +146,18 @@ func (g *Gossiper) RoutePacket(dst string, gp u.GossipPacket) {
 		fmt.Println(err)
 		return
 	}
+
+	g.SendPacketToNeighbor(*addr, gp)
+}
+
+// SendPacketToNeighbor send packet to known neighbor
+func (g *Gossiper) SendPacketToNeighbor(addr net.UDPAddr,
+	gp u.GossipPacket) {
 	// protobuf the packet
 	packet := u.ProtobufGossip(&gp)
 
 	// send the packet
-	g.GossipConn.WriteToUDP(packet, addr)
+	g.GossipConn.WriteToUDP(packet, &addr)
 }
 
 // DealWithPrivateMessage deals with private messages
