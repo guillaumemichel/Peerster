@@ -179,6 +179,3 @@ type SearchStatus struct {
 	Origin   string
 	Keywords map[string]bool
 }
-
-type ChunkMap struct {
-}

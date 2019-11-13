@@ -1,6 +1,7 @@
 package gossiper
 
 import (
+	"sort"
 	"strings"
 	"time"
 
@@ -39,7 +40,7 @@ func (g *Gossiper) HandleSearchReq(req u.SearchRequest) {
 	g.SearchMutex.Unlock()
 
 	// search for file locally
-	g.SearchForFile(req.Keywords)
+	g.SearchForFile(req.Origin, req.Keywords)
 	// substract 1 to the budget
 	req.Budget--
 
@@ -75,13 +76,49 @@ func (g *Gossiper) HandleSearchReq(req u.SearchRequest) {
 }
 
 // SearchForFile search for a file locally
-func (g *Gossiper) SearchForFile(keywords []string) {
-	for _, f := range g.Chunks {
+func (g *Gossiper) SearchForFile(dest string, keywords []string) {
+	// create a map from filename to possessed chunk numbers
+	chunkMap := make(map[*u.FileStruct]map[int]bool)
+	// iterate over all known chunks
+	for _, c := range g.Chunks {
+		// iterate over all keywords
 		for _, w := range keywords {
-			if strings.Contains(f.File.Name, w) {
-
+			// if the name of the chunk correspond to a keyword
+			if strings.Contains(c.File.Name, w) {
+				// if filename's map doesn't exist yet
+				if _, ok := chunkMap[c.File]; !ok {
+					// initialize the map corresponding to the filename
+					chunkMap[c.File] = make(map[int]bool)
+				}
+				// we have that chunk
+				chunkMap[c.File][c.Number] = true
 			}
 		}
+	}
+
+	results := make([]*u.SearchResult, 0)
+	for k, v := range chunkMap {
+		// create the list of distinct chunk ids
+		cmap := make([]uint64, 0)
+		for i := range v {
+			cmap = append(cmap, uint64(i))
+		}
+		// sort the slice in ascending order
+		sort.Slice(cmap, func(i, j int) bool {
+			return cmap[i] < cmap[j]
+		})
+		// create the search result
+		res := u.SearchResult{
+			FileName:     k.Name,
+			MetafileHash: k.MetafileHash[:],
+			ChunkMap:     cmap,
+			ChunkCount:   uint64(k.NChunks),
+		}
+		// append it to the list
+		results = append(results, &res)
+	}
+	if len(results) > 0 {
+		g.SendSearchReply(dest, results)
 	}
 }
 
