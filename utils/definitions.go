@@ -10,6 +10,8 @@ type Message struct {
 	Destination *string
 	File        *string
 	Request     *[]byte
+	Budget      *uint64
+	Keywords    *[]string
 }
 
 // SimpleMessage : a simple message structure containing the original sender's

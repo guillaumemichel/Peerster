@@ -202,6 +202,19 @@ func CheckFilename(name string) error {
 	return nil
 }
 
+// SplitKeywords given a string, split the keywords separated by comas and
+// returns a list of keyword strings
+func SplitKeywords(kw string) []string {
+	list := strings.Split(kw, ",")
+	keywords := make([]string, 0)
+	for _, w := range list {
+		if w != "" {
+			keywords = append(keywords, w)
+		}
+	}
+	return keywords
+}
+
 /*
 // RemoveAddrFromPeers : remove the given address from the array of addresses
 func RemoveAddrFromPeers(peers *[]net.UDPAddr, addr *net.UDPAddr) *[]net.UDPAddr {

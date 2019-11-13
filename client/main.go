@@ -72,6 +72,8 @@ func main() {
 			Destination: nil,
 			File:        nil,
 			Request:     nil,
+			Budget:      nil,
+			Keywords:    nil,
 		}
 	} else if bText && bDest && !bFile && !bReq && !bKw {
 		// private message
@@ -81,6 +83,8 @@ func main() {
 			Destination: dest,
 			File:        nil,
 			Request:     nil,
+			Budget:      nil,
+			Keywords:    nil,
 		}
 
 	} else if !bText && !bDest && bFile && !bReq && !bKw {
@@ -91,6 +95,8 @@ func main() {
 			File:        file,
 			Text:        "",
 			Request:     nil,
+			Budget:      nil,
+			Keywords:    nil,
 		}
 	} else if !bText && bDest && bFile && bReq && !bKw {
 		// requesting file
@@ -104,10 +110,42 @@ func main() {
 			Destination: dest,
 			File:        file,
 			Request:     &hashByte,
+			Budget:      nil,
+			Keywords:    nil,
+			Text:        "",
 		}
+	} else if !bText && !bDest && bFile && bReq && !bKw {
+		// request file without destination
+		// cast string request to []byte
+		hashByte, err := hex.DecodeString(*req)
+		if err != nil {
+			BadRequest()
+		}
+		// create the request
+		message = u.Message{
+			Destination: nil,
+			Text:        "",
+			File:        file,
+			Request:     &hashByte,
+			Budget:      nil,
+			Keywords:    nil,
+		}
+
 	} else if !bText && !bDest && !bReq && bKw {
 		// file search
-		// ???
+
+		b := uint64(*bg)
+		// split keywords
+		keywords := u.SplitKeywords(*kw)
+		// create the message
+		message = u.Message{
+			Destination: nil,
+			Text:        "",
+			File:        nil,
+			Request:     nil,
+			Budget:      &b,
+			Keywords:    &keywords,
+		}
 	} else {
 		BadArgument()
 	}
