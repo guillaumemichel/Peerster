@@ -138,7 +138,7 @@ type DataReply struct {
 // FileRequestStatus status for a file request
 type FileRequestStatus struct {
 	File          *FileStruct
-	Destination   string
+	Destination   [][]string
 	MetafileOK    bool
 	PendingChunks []ShaHash
 	ChunkCount    int
@@ -178,4 +178,13 @@ type SearchResult struct {
 type SearchStatus struct {
 	Origin   string
 	Keywords map[string]bool
+}
+
+// SearchFile search file structure
+type SearchFile struct {
+	Name         string
+	MetafileHash ShaHash
+	Chunks       map[uint64]map[string]bool
+	NChunks      uint64
+	Complete     bool
 }

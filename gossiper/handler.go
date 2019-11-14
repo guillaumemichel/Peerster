@@ -307,6 +307,12 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			} else if rcvMsg.DataReply != nil {
 				// deals with data reply
 				g.RouteDataReply(*rcvMsg.DataReply)
+			} else if rcvMsg.SearchRequest != nil {
+				// deals with search requests
+				g.HandleSearchReq(*rcvMsg.SearchRequest)
+			} else if rcvMsg.SearchReply != nil {
+				// deals with search reply
+				g.HandleSearchReply(*rcvMsg.SearchReply)
 			} else {
 				fmt.Println("Error: unrecognized message")
 			}
@@ -326,7 +332,10 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 		bDest := rcvMsg.Destination != nil && *rcvMsg.Destination != ""
 		bFile := rcvMsg.File != nil && *rcvMsg.File != ""
 		bReq := rcvMsg.Request != nil && len(*rcvMsg.Request) > 0
-		if bText && !bDest && !bFile && !bReq {
+		bKw := rcvMsg.Keywords != nil && len(*rcvMsg.Keywords) > 0 &&
+			rcvMsg.Budget != nil
+
+		if bText && !bDest && !bFile && !bReq && !bKw {
 			// rumor message
 
 			// print the client message status
@@ -349,7 +358,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				}
 			}
 
-		} else if bText && bDest && !bFile && !bReq {
+		} else if bText && bDest && !bFile && !bReq && !bKw {
 			// private message
 
 			if g.Mode == u.RumorModeStr {
@@ -364,7 +373,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				g.PrintExpectedRumorMode("private message")
 			}
 
-		} else if !bText && !bDest && bFile && !bReq {
+		} else if !bText && !bDest && bFile && !bReq && !bKw {
 			// index file
 
 			// send metafile to host
@@ -374,8 +383,8 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			} else {
 				g.PrintExpectedRumorMode("file index")
 			}
-		} else if !bText && bDest && bFile && bReq {
-			// file request
+		} else if !bText && bDest && bFile && bReq && !bKw {
+			// file request to host
 
 			if g.Mode == u.RumorModeStr {
 				// create a file request and sends it
@@ -384,6 +393,13 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			} else {
 				g.PrintExpectedRumorMode("file request")
 			}
+
+		} else if !bText && !bDest && bFile && bReq && !bKw {
+			// file request after search
+			g.HandleDownload(*rcvMsg.File, *rcvMsg.Request)
+		} else if !bText && !bDest && !bFile && !bReq && bKw {
+			// file search
+			g.ManageSearch(*rcvMsg.Budget, *rcvMsg.Keywords)
 		} else {
 			g.Printer.Println("Error: invalid message received")
 		}

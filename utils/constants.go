@@ -64,7 +64,7 @@ const (
 	DefaultSearchBudget int = 2
 
 	// MaxSearchBudget max search budget
-	MaxSearchBudget int = 32
+	MaxSearchBudget uint64 = 32
 
 	// DefaultGossiperName default gossiper name
 	DefaultGossiperName string = "Gossiper"
@@ -72,4 +72,11 @@ const (
 	// DefaultDuplicateSearchTime default time in which the same search request
 	// is considered as duplicate
 	DefaultDuplicateSearchTime time.Duration = 500 * time.Millisecond
+
+	// SearchPeriod search requests should be sent periodically with this
+	// period
+	SearchPeriod time.Duration = time.Second
+
+	// MatchThreshold threshold of search matchs
+	MatchThreshold int = 2
 )

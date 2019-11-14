@@ -283,6 +283,22 @@ func SameSearch(search SearchStatus, req SearchRequest) bool {
 	return false
 }
 
+// CheckSearchFileComplete check if a search file is complete and update the
+// corresponding field if it is
+func CheckSearchFileComplete(sf SearchFile) {
+	complete := true
+	// iterate over all possible chunks
+	for i := uint64(0); i < sf.NChunks; i++ {
+		if _, ok := sf.Chunks[i]; !ok {
+			// if one is missing, not complete
+			complete = false
+		}
+	}
+	if complete {
+		sf.Complete = true
+	}
+}
+
 /*
 // RemoveAddrFromPeers : remove the given address from the array of addresses
 func RemoveAddrFromPeers(peers *[]net.UDPAddr, addr *net.UDPAddr) *[]net.UDPAddr {

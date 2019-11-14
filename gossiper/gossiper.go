@@ -51,6 +51,9 @@ type Gossiper struct {
 
 	SearchStatuses []u.SearchStatus // list of current searches
 	SearchMutex    *sync.Mutex
+
+	SearchChans   map[*[]string]chan u.SearchReply
+	SearchResults []u.SearchFile
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
@@ -117,6 +120,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		fstructs := f.LoadSharedFiles()
 	*/
 	fstructs := make([]u.FileStruct, 0)
+	schan := make(map[*[]string]chan u.SearchReply)
 	/*
 		statuses := make([]u.FileRequestStatus, 0)
 		fstatus := u.FileStatusList{List: statuses}
@@ -159,6 +163,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		Chunks:         chunks,
 		SearchStatuses: searchs,
 		SearchMutex:    &sync.Mutex{},
+		SearchChans:    schan,
 	}
 }
 

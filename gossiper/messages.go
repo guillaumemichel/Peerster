@@ -149,45 +149,46 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 		}*/
 
 	/*
-		// look for file in the ones that were sent to me
-		statuses := g.FileStatus
+			// look for file in the ones that were sent to me
+			statuses := g.FileStatus
 
-			for _, v := range statuses {
-				// -1 is for received files, look for same mfile hash
+				for _, v := range statuses {
+					// -1 is for received files, look for same mfile hash
 
-					if v.ChunkCount == -1 && v.MetafileHash == h {
-						// set status file
-						v.ChunkCount = 0
-						v.Name = name
-						v.Destination = dest
-						v.Data = data
+						if v.ChunkCount == -1 && v.MetafileHash == h {
+							// set status file
+							v.ChunkCount = 0
+							v.Name = name
+							v.Destination = dest
+							v.Data = data
 
-						metafile := make([]byte, 0)
-						for _, w := range v.PendingChunks {
-							metafile = append(metafile, w[:]...)
+							metafile := make([]byte, 0)
+							for _, w := range v.PendingChunks {
+								metafile = append(metafile, w[:]...)
+							}
+
+							// create data reply to fake that we got the mfile from dest
+							drep := u.DataReply{
+								Origin:      dest,
+								Destination: g.Name,
+								HashValue:   hash,
+								Data:        metafile,
+								HopLimit:    u.DefaultHopLimit,
+							}
+							g.HandleDataReply(drep)
 						}
 
-						// create data reply to fake that we got the mfile from dest
-						drep := u.DataReply{
-							Origin:      dest,
-							Destination: g.Name,
-							HashValue:   hash,
-							Data:        metafile,
-							HopLimit:    u.DefaultHopLimit,
-						}
-						g.HandleDataReply(drep)
-					}
+				}
 
-			}
+
+		// create the data request
+		req := u.DataRequest{
+			Origin:      g.Name,
+			Destination: dest,
+			HopLimit:    u.DefaultHopLimit,
+			HashValue:   hash,
+		}
 	*/
-
-	// create the data request
-	req := u.DataRequest{
-		Origin:      g.Name,
-		Destination: dest,
-		HopLimit:    u.DefaultHopLimit,
-		HashValue:   hash,
-	}
 
 	var fstruct *u.FileStruct
 	for _, fs := range g.FileStructs {
@@ -211,50 +212,68 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 		}
 	}
 
+	// create destination array
+	dests := [][]string{{dest}}
+
 	c := make(chan bool)
 	// create the new file status
 	fstatus := u.FileRequestStatus{
 		File:        fstruct,
-		Destination: dest,
+		Destination: dests,
 		MetafileOK:  false,
 		ChunkCount:  0,
 		Ack:         c,
 	}
 	g.FileStatus = append(g.FileStatus, &fstatus)
 
-	g.SendFileRequest(&fstatus, req, true)
+	g.SendFileRequest(&fstatus, &h, dests[0])
 }
 
 // RequestNextChunk request the next chunk to dest with hash
-func (g *Gossiper) RequestNextChunk(fstatus *u.FileRequestStatus) {
+func (g *Gossiper) RequestNextChunk(fstatus *u.FileRequestStatus,
+	peers []string, hash *u.ShaHash) u.DataRequest {
+
+	var hashval []byte
+	if hash == nil {
+		hashval = fstatus.PendingChunks[fstatus.ChunkCount][:]
+	} else {
+		hashval = (*hash)[:]
+	}
+
+	r := u.GetRealRand(len(peers))
+	dest := peers[r]
+
 	// create the new file request
 	req := u.DataRequest{
 		Origin:      g.Name,
-		Destination: fstatus.Destination,
+		Destination: dest,
 		HopLimit:    u.DefaultHopLimit,
-		HashValue:   fstatus.PendingChunks[fstatus.ChunkCount][:],
+		HashValue:   hashval,
 	}
-	g.SendFileRequest(fstatus, req, false)
+	//g.SendFileRequest(fstatus, req, false)
+	return req
 }
 
 // SendFileRequest send file request and manage timeouts
 func (g *Gossiper) SendFileRequest(fstatus *u.FileRequestStatus,
-	req u.DataRequest, metafile bool) {
+	metafilehash *u.ShaHash, peers []string) {
 
 	// creates the timeout
 	timeout := make(chan bool)
 
 	acked := false
 	for !acked {
+		req := g.RequestNextChunk(fstatus, peers, metafilehash)
+
 		// route the packet
 		g.RouteDataReq(req)
 
-		if metafile {
+		if metafilehash != nil {
 			// print downloading metafile message
 			g.PrintDownloadMetaFile(req.Destination, fstatus.File.Name)
 		} else {
 			// print downloading chunk message
-			g.PrintDownloadChunk(fstatus.Destination, fstatus.File.Name,
+			g.PrintDownloadChunk(req.Destination, fstatus.File.Name,
 				fstatus.ChunkCount+1)
 		}
 

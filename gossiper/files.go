@@ -158,11 +158,20 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 
 			v.File.Metafile = drep.Data
 			v.File.NChunks = len(v.PendingChunks)
+			// file downloaded from an unique source
+			if len(v.Destination) == 1 {
+				// fill the destination array with this source for each chunk
+				dests := make([][]string, len(v.PendingChunks))
+				for i := 0; i < len(v.PendingChunks); i++ {
+					dests[i] = []string{v.Destination[0][0]}
+				}
+				v.Destination = dests
+			}
 
 			// request first chunk
 			// write the chunk to the list of chunks
 
-			g.RequestNextChunk(v)
+			g.SendFileRequest(v, nil, v.Destination[v.ChunkCount])
 			return
 		}
 		if v.MetafileOK { // if metafile ok, we look for a chunk
@@ -194,7 +203,7 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 						g.ReconstructFile(v)
 					} else {
 						// request next chunk
-						g.RequestNextChunk(v)
+						g.SendFileRequest(v, nil, v.Destination[v.ChunkCount])
 					}
 					return
 				}
@@ -411,4 +420,81 @@ func (g *Gossiper) ScanFile(f *os.File) (*u.FileStruct, error) {
 	filestruct.Chunks = chunks
 
 	return &filestruct, nil
+}
+
+// HandleDownload download a file without specifying a destination
+func (g *Gossiper) HandleDownload(filename string, request []byte) {
+	var h u.ShaHash
+	copy(h[:], request)
+	for _, sr := range g.SearchResults {
+		if sr.MetafileHash == h {
+			g.DownloadFile(filename, sr)
+			return
+		}
+	}
+	g.Printer.Println("Error: no search result match the given request")
+}
+
+// DownloadFile download a file from its search file results
+func (g *Gossiper) DownloadFile(filename string, f u.SearchFile) {
+
+	var fstruct *u.FileStruct
+	for _, fs := range g.FileStructs {
+		if fs.MetafileHash == f.MetafileHash {
+			if fs.Done {
+				g.Printer.Println("Warning: file already downloaded")
+				return
+			}
+			fstruct = &fs
+			fstruct.Name = f.Name
+		}
+	}
+
+	chunks := make(map[u.ShaHash]*u.FileChunk)
+	if fstruct == nil {
+		fstruct = &u.FileStruct{
+			Name:         f.Name,
+			MetafileHash: f.MetafileHash,
+			Done:         false,
+			Chunks:       chunks,
+		}
+	}
+	allDests := make(map[string]bool)
+
+	// create destination array
+	dests := make([][]string, f.NChunks)
+	g.RouteMutex.Lock()
+	for i := uint64(0); i < f.NChunks; i++ {
+		// create the array for each chunk
+		dests[i] = make([]string, 0)
+		for k := range f.Chunks[i] {
+			// if we have a route to dest, add it to dests
+			if _, ok := g.Routes.Load(k); ok {
+				dests[i] = append(dests[i], k)
+				allDests[k] = true
+			}
+		}
+	}
+	g.RouteMutex.Unlock()
+
+	c := make(chan bool)
+	// create the new file status
+	fstatus := u.FileRequestStatus{
+		File:        fstruct,
+		Destination: dests,
+		MetafileOK:  false,
+		ChunkCount:  0,
+		Ack:         c,
+	}
+	g.FileStatus = append(g.FileStatus, &fstatus)
+
+	mfdests := make([]string, len(allDests))
+	count := 0
+	for d := range allDests {
+		mfdests[count] = d
+		count++
+	}
+
+	g.SendFileRequest(&fstatus, &f.MetafileHash, mfdests)
+
 }
