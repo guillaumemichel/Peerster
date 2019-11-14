@@ -33,71 +33,101 @@ func (g *Gossiper) PeersToString() string {
 
 // PrintMessageClient : print messages from the client
 func (g *Gossiper) PrintMessageClient(text string) {
-	g.Printer.Println("CLIENT MESSAGE", text)
-	g.PrintPeers()
+	if g.ShouldPrint(logHW1, 1) {
+		g.Printer.Println("CLIENT MESSAGE", text)
+		g.PrintPeers()
+	}
 }
 
 // PrintSimpleMessage : print simple messages received from gossipers
 func (g *Gossiper) PrintSimpleMessage(msg u.SimpleMessage, from string) {
 
-	g.Printer.Printf("SIMPLE MESSAGE origin %s from %s contents %s\n",
-		msg.OriginalName, from, msg.Contents)
+	if g.ShouldPrint(logHW1, 1) {
+		g.Printer.Printf("SIMPLE MESSAGE origin %s from %s contents %s\n",
+			msg.OriginalName, from, msg.Contents)
 
-	g.PrintPeers()
+		g.PrintPeers()
+	}
 }
 
 // PrintRumorMessage : print rumor messages received from gossipers
 func (g *Gossiper) PrintRumorMessage(msg u.RumorMessage, from string) {
-	g.Printer.Printf("RUMOR origin %s from %s ID %d contents %s\n",
-		msg.Origin, from, msg.ID, msg.Text)
-	g.PrintPeers()
+	if g.ShouldPrint(logHW1, 1) || g.ShouldPrint(logHW2, 1) {
+
+		g.Printer.Printf("RUMOR origin %s from %s ID %d contents %s\n",
+			msg.Origin, from, msg.ID, msg.Text)
+		g.PrintPeers()
+	}
 }
 
 // PrintStatusMessage : print status messages received from gossipers
 func (g *Gossiper) PrintStatusMessage(msg u.StatusPacket, from string) {
-	str := "STATUS from " + from
-	for _, v := range msg.Want {
-		str += " peer " + v.Identifier + " nextID " +
-			strconv.Itoa(int(v.NextID))
+	if g.ShouldPrint(logHW1, 1) {
+		str := "STATUS from " + from
+		for _, v := range msg.Want {
+			str += " peer " + v.Identifier + " nextID " +
+				strconv.Itoa(int(v.NextID))
+		}
+		g.Printer.Println(str)
+		g.PrintPeers()
 	}
-	g.Printer.Println(str)
-	g.PrintPeers()
+}
+
+// PrintMongering : prints mongering message
+func (g *Gossiper) PrintMongering(addr string) {
+	if g.ShouldPrint(logHW1, 1) {
+		g.Printer.Printf("MONGERING with %s\n", addr)
+	}
 }
 
 // PrintFlippedCoin : prints flipped coin message
 func (g *Gossiper) PrintFlippedCoin(addr string) {
-	g.Printer.Printf("FLIPPED COIN sending rumor to %s\n", addr)
+	if g.ShouldPrint(logHW1, 1) {
+		g.Printer.Printf("FLIPPED COIN sending rumor to %s\n", addr)
+	}
 }
 
 // PrintInSync : prints in sync message
 func (g *Gossiper) PrintInSync(addr string) {
-	g.Printer.Printf("IN SYNC WITH %s\n", addr)
+	if g.ShouldPrint(logHW1, 1) {
+		g.Printer.Printf("IN SYNC WITH %s\n", addr)
+	}
 }
 
 // PrintUpdateRoute prints the DSDV update message
 func (g *Gossiper) PrintUpdateRoute(origin, addr string) {
-	g.Printer.Printf("DSDV %s %s\n", origin, addr)
+	if g.ShouldPrint(logHW2, 1) {
+		g.Printer.Printf("DSDV %s %s\n", origin, addr)
+	}
 }
 
 // PrintPrivateMessage prints the private message to destination host
 func (g *Gossiper) PrintPrivateMessage(pm u.PrivateMessage) {
-	g.Printer.Printf("PRIVATE origin %s hop-limit %d contents %s\n",
-		pm.Origin, pm.HopLimit, pm.Text)
+	if g.ShouldPrint(logHW2, 1) {
+		g.Printer.Printf("PRIVATE origin %s hop-limit %d contents %s\n",
+			pm.Origin, pm.HopLimit, pm.Text)
+	}
 }
 
 // PrintDownloadMetaFile prints downloading metafile
 func (g *Gossiper) PrintDownloadMetaFile(dest, name string) {
-	g.Printer.Printf("DOWNLOADING metafile of %s from %s\n", name, dest)
+	if g.ShouldPrint(logHW2, 1) || g.ShouldPrint(logHW3, 1) {
+		g.Printer.Printf("DOWNLOADING metafile of %s from %s\n", name, dest)
+	}
 }
 
 // PrintDownloadChunk prints downloading chunk number n message
 func (g *Gossiper) PrintDownloadChunk(dest, name string, n int) {
-	g.Printer.Printf("DOWNLOADING %s chunk %d from %s\n", name, n, dest)
+	if g.ShouldPrint(logHW2, 1) || g.ShouldPrint(logHW3, 1) {
+		g.Printer.Printf("DOWNLOADING %s chunk %d from %s\n", name, n, dest)
+	}
 }
 
 // PrintReconstructFile print reconstructed file message
 func (g *Gossiper) PrintReconstructFile(name string) {
-	g.Printer.Printf("RECONSTRUCTED file %s\n", name)
+	if g.ShouldPrint(logHW2, 1) || g.ShouldPrint(logHW3, 1) {
+		g.Printer.Printf("RECONSTRUCTED file %s\n", name)
+	}
 }
 
 // PrintUnknownMode unknown mode message
@@ -114,28 +144,39 @@ func (g *Gossiper) PrintExpectedRumorMode(message string) {
 
 // PrintSentPrivateMessage print leaving private message
 func (g *Gossiper) PrintSentPrivateMessage(dest, text string) {
-	g.Printer.Printf("CLIENT MESSAGE %s dest %s\n", text, dest)
+	if g.ShouldPrint(logHW2, 1) {
+		g.Printer.Printf("CLIENT MESSAGE %s dest %s\n", text, dest)
+	}
 }
 
 // PrintHashOfIndexedFile print the hash of an indexed file
 func (g *Gossiper) PrintHashOfIndexedFile(file, hash string) {
-	g.Printer.Printf("INDEXED file %s, hash is %s\n", file, hash)
+	if g.ShouldPrint(logHW2, 1) || g.ShouldPrint(logHW3, 1) {
+
+		g.Printer.Printf("INDEXED file %s, hash is %s\n", file, hash)
+	}
 }
 
 // PrintFoundMatch print found match after file search
-func (g *Gossiper) PrintFoundMatch(filename, peer, metahash string, chunks []uint64) {
-	c := ""
-	for i, v := range chunks {
-		if i != 0 {
-			c += ","
+func (g *Gossiper) PrintFoundMatch(filename, peer, metahash string,
+	chunks []uint64) {
+	if g.ShouldPrint(logHW3, 1) {
+
+		c := ""
+		for i, v := range chunks {
+			if i != 0 {
+				c += ","
+			}
+			c += strconv.Itoa(int(v))
 		}
-		c += strconv.Itoa(int(v))
+		g.Printer.Printf("FOUND match %s at %s metafile=%s chunks=%s\n",
+			filename, peer, metahash, c)
 	}
-	g.Printer.Printf("FOUND match %s at %s metafile=%s chunks=%s\n",
-		filename, peer, metahash, c)
 }
 
 // PrintSearchFinished print search finished message
 func (g *Gossiper) PrintSearchFinished() {
-	g.Printer.Println("SEARCH FINISHED")
+	if g.ShouldPrint(logHW3, 1) {
+		g.Printer.Println("SEARCH FINISHED")
+	}
 }

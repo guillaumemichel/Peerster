@@ -68,7 +68,7 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 	g.PendingACKs.Store(*pendingACKStr, values)
 	//g.ACKMutex.Unlock()
 
-	g.Printer.Printf("MONGERING with %s\n", targetStr)
+	g.PrintMongering(targetStr)
 	// send packet
 	_, err := g.GossipConn.WriteToUDP(packet, &addr)
 	if err != nil {

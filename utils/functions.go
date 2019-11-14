@@ -299,6 +299,18 @@ func CheckSearchFileComplete(sf SearchFile) {
 	}
 }
 
+// FlattenKeywords flatten list of string to single string
+func FlattenKeywords(old []string) string {
+	if len(old) == 0 {
+		return ""
+	}
+	kw := ""
+	for _, w := range old {
+		kw += w + ","
+	}
+	return kw[:len(kw)-1]
+}
+
 /*
 // RemoveAddrFromPeers : remove the given address from the array of addresses
 func RemoveAddrFromPeers(peers *[]net.UDPAddr, addr *net.UDPAddr) *[]net.UDPAddr {

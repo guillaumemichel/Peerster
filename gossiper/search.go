@@ -15,6 +15,12 @@ func (g *Gossiper) ManageSearch(initialBudget uint64, keywords []string) {
 
 	endChan := make(chan bool)
 
+	if g.ShouldPrint(logHW3, 2) {
+		g.Printer.Printf("Got a file search request from client \n  "+
+			"Budget: %d\n  Keywords: %s\n\n", initialBudget,
+			u.FlattenKeywords(keywords))
+	}
+
 	// function that resend the request every second until receiving a Signal
 	// from endChan
 	go func() {
@@ -78,6 +84,11 @@ func (g *Gossiper) ManageSearch(initialBudget uint64, keywords []string) {
 					// if file doesn't exist yet in files, create it
 					if !found {
 						cmap := make(map[uint64]map[string]bool)
+						/*
+							for i := uint64(0); i < v.ChunkCount; i++ {
+								cmap[i] = make(map[string]bool)
+							}
+						*/
 						f := u.SearchFile{
 							Name:         v.FileName,
 							MetafileHash: h,
@@ -87,7 +98,7 @@ func (g *Gossiper) ManageSearch(initialBudget uint64, keywords []string) {
 						}
 						// update host
 						for _, i := range v.ChunkMap {
-							f.Chunks[i][rep.Origin] = true
+							f.Chunks[i-1][rep.Origin] = true
 						}
 						// check if file is complete
 						u.CheckSearchFileComplete(f)
@@ -125,6 +136,14 @@ func (g *Gossiper) SendNewSearchReq(budget uint64, keywords []string) {
 
 // HandleSearchReq handles a search request
 func (g *Gossiper) HandleSearchReq(req u.SearchRequest) {
+
+	if g.ShouldPrint(logHW3, 2) {
+		g.Printer.Printf("Got search request from %s\n  Budget: %d\n  "+
+			"Keywords: %s\n  Peers: %s\n\n", req.Origin, req.Budget,
+			u.FlattenKeywords(req.Keywords), g.PeersToString())
+
+	}
+
 	// register request
 	g.SearchMutex.Lock()
 	// check if search request is duplicate
@@ -140,6 +159,10 @@ func (g *Gossiper) HandleSearchReq(req u.SearchRequest) {
 	g.SearchForFile(req.Origin, req.Keywords)
 	// substract 1 to the budget
 	req.Budget--
+
+	if len(g.Peers) == 0 {
+		return
+	}
 
 	if req.Budget > 0 {
 		quotient := int(req.Budget) / len(g.Peers)

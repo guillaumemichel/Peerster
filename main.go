@@ -33,6 +33,8 @@ func main() {
 		"port for the GUI client")
 	rtimer := flag.Int("rtimer", u.RTimerDefault, "Timeout in seconds to "+
 		"send route rumors. 0 (default) means disable sending route rumors.")
+	loglvl := flag.String("debug", "111",
+		"debug flags that correspond to HW1-2-3")
 
 	flag.Parse()
 	// help message
@@ -43,5 +45,5 @@ func main() {
 
 	// start new gossiper
 	g.StartNewGossiper(gossipAddr, name, UIPort, GUIPort, peersInput,
-		*simple, *rtimer, *antiE)
+		*simple, *rtimer, *antiE, *loglvl)
 }

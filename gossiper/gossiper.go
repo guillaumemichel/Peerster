@@ -54,11 +54,12 @@ type Gossiper struct {
 
 	SearchChans   map[*[]string]chan u.SearchReply
 	SearchResults []u.SearchFile
+	LogLvl        string
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
 func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
-	simple bool, rtimer, antiE int) *Gossiper {
+	simple bool, rtimer, antiE int, loglvl string) *Gossiper {
 
 	// define gossip address and connection for the new gossiper
 	gossAddr, err := net.ResolveUDPAddr("udp4", *address)
@@ -164,6 +165,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		SearchStatuses: searchs,
 		SearchMutex:    &sync.Mutex{},
 		SearchChans:    schan,
+		LogLvl:         loglvl,
 	}
 }
 
@@ -249,7 +251,7 @@ func (g *Gossiper) Run() {
 
 // StartNewGossiper : Creates and starts a new gossiper
 func StartNewGossiper(address, name, UIPort, GUIPort, peerList *string,
-	simple bool, rtimer, antiE int) {
+	simple bool, rtimer, antiE int, loglvl string) {
 	NewGossiper(address, name, UIPort, GUIPort, peerList, simple,
-		rtimer, antiE).Run()
+		rtimer, antiE, loglvl).Run()
 }
