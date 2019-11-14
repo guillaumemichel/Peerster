@@ -285,7 +285,7 @@ func SameSearch(search SearchStatus, req SearchRequest) bool {
 
 // CheckSearchFileComplete check if a search file is complete and update the
 // corresponding field if it is
-func CheckSearchFileComplete(sf SearchFile) {
+func CheckSearchFileComplete(sf *SearchFile) {
 	complete := true
 	// iterate over all possible chunks
 	for i := uint64(0); i < sf.NChunks; i++ {

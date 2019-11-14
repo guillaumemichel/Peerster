@@ -74,21 +74,21 @@ func (g *Gossiper) ManageSearch(initialBudget uint64, keywords []string) {
 						if sf.MetafileHash == h {
 							// update host's chunks
 							for _, i := range v.ChunkMap {
-								sf.Chunks[i][rep.Origin] = true
+								sf.Chunks[i-1][rep.Origin] = true
 							}
 							// check if file is complete
-							u.CheckSearchFileComplete(sf)
+							u.CheckSearchFileComplete(&sf)
 							found = true
 						}
 					}
 					// if file doesn't exist yet in files, create it
 					if !found {
 						cmap := make(map[uint64]map[string]bool)
-						/*
-							for i := uint64(0); i < v.ChunkCount; i++ {
-								cmap[i] = make(map[string]bool)
-							}
-						*/
+
+						for i := uint64(0); i < v.ChunkCount; i++ {
+							cmap[i] = make(map[string]bool)
+						}
+
 						f := u.SearchFile{
 							Name:         v.FileName,
 							MetafileHash: h,
@@ -101,7 +101,7 @@ func (g *Gossiper) ManageSearch(initialBudget uint64, keywords []string) {
 							f.Chunks[i-1][rep.Origin] = true
 						}
 						// check if file is complete
-						u.CheckSearchFileComplete(f)
+						u.CheckSearchFileComplete(&f)
 						// append the freshly created file to files
 						files = append(files, f)
 					}
@@ -112,6 +112,9 @@ func (g *Gossiper) ManageSearch(initialBudget uint64, keywords []string) {
 		doneCount = 0
 		for _, sf := range files {
 			if sf.Complete {
+				if g.ShouldPrint(logHW3, 2) {
+					g.Printer.Println("We got", sf.Name)
+				}
 				doneCount++
 			}
 		}
@@ -137,23 +140,27 @@ func (g *Gossiper) SendNewSearchReq(budget uint64, keywords []string) {
 // HandleSearchReq handles a search request
 func (g *Gossiper) HandleSearchReq(req u.SearchRequest) {
 
-	if g.ShouldPrint(logHW3, 2) {
-		g.Printer.Printf("Got search request from %s\n  Budget: %d\n  "+
-			"Keywords: %s\n  Peers: %s\n\n", req.Origin, req.Budget,
-			u.FlattenKeywords(req.Keywords), g.PeersToString())
-
-	}
-
 	// register request
 	g.SearchMutex.Lock()
 	// check if search request is duplicate
 	if g.NewSearch(req) {
 		// if not register it
 		g.AddSearch(req)
+		g.SearchMutex.Unlock()
+
 		// and deletes it after a timeout
 		go g.DeleteSearchAfterTimeout(req)
+	} else {
+		g.SearchMutex.Unlock()
+		return
 	}
-	g.SearchMutex.Unlock()
+
+	if g.ShouldPrint(logHW3, 2) {
+		g.Printer.Printf("Got search request from %s\n  Budget: %d\n  "+
+			"Keywords: %s\n  Peers: %s\n\n", req.Origin, req.Budget,
+			u.FlattenKeywords(req.Keywords), g.PeersToString())
+
+	}
 
 	// search for file locally
 	g.SearchForFile(req.Origin, req.Keywords)
@@ -227,10 +234,12 @@ func (g *Gossiper) SearchForFile(dest string, keywords []string) {
 		sort.Slice(cmap, func(i, j int) bool {
 			return cmap[i] < cmap[j]
 		})
-		// increase the index number as they should start at 1
-		for i := range cmap {
-			cmap[i]++
-		}
+		/*
+			// increase the index number as they should start at 1
+			for i := range cmap {
+				cmap[i]++
+			}
+		*/
 
 		// create the search result
 		res := u.SearchResult{
@@ -241,6 +250,7 @@ func (g *Gossiper) SearchForFile(dest string, keywords []string) {
 		}
 		// append it to the list
 		results = append(results, &res)
+
 	}
 	if len(results) > 0 {
 		g.SendSearchReply(dest, results)
@@ -281,8 +291,13 @@ func (g *Gossiper) TreatMySearchReply(rep u.SearchReply) {
 // HandleSearchReply handles search replies
 func (g *Gossiper) HandleSearchReply(rep u.SearchReply) {
 
+	if g.ShouldPrint(logHW3, 3) {
+		g.Printer.Printf("Destination: %s   My name: %s\n\n",
+			rep.Destination, g.Name)
+	}
 	if rep.Destination == g.Name {
 		g.TreatMySearchReply(rep)
+		return
 	}
 
 	// decrease hop limit

@@ -136,6 +136,7 @@ func (g *Gossiper) RoutePacket(dst string, gp u.GossipPacket) {
 	g.RouteMutex.Unlock()
 
 	if !ok {
+		g.Printer.Println("Searchreply:", gp.SearchReply)
 		fmt.Println("No route to", dst)
 		return
 	}
@@ -312,6 +313,9 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				g.HandleSearchReq(*rcvMsg.SearchRequest)
 			} else if rcvMsg.SearchReply != nil {
 				// deals with search reply
+				if g.ShouldPrint(logHW3, 3) {
+					g.Printer.Println("Got search reply")
+				}
 				g.HandleSearchReply(*rcvMsg.SearchReply)
 			} else {
 				fmt.Println("Error: unrecognized message")
