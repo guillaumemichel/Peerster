@@ -10,21 +10,34 @@ import (
 )
 
 // ManageSearch manage a search
-func (g *Gossiper) ManageSearch(initialBudget uint64, keywords []string) {
+func (g *Gossiper) ManageSearch(initialBudget *uint64, keywords []string) {
 	g.SearchChans[&keywords] = make(chan u.SearchReply)
 
 	endChan := make(chan bool)
+	doubleBudget := initialBudget == nil
 
 	if g.ShouldPrint(logHW3, 2) {
+		var bPrint uint64
+		if doubleBudget {
+			bPrint = u.DefaultSearchBudget
+		} else {
+			bPrint = *initialBudget
+		}
+
 		g.Printer.Printf("Got a file search request from client \n  "+
-			"Budget: %d\n  Keywords: %s\n\n", initialBudget,
+			"Budget: %d\n  Keywords: %s\n\n", bPrint,
 			u.FlattenKeywords(keywords))
 	}
 
 	// function that resend the request every second until receiving a Signal
 	// from endChan
 	go func() {
-		b := initialBudget
+		var b uint64
+		if doubleBudget {
+			b = u.DefaultSearchBudget
+		} else {
+			b = *initialBudget
+		}
 		for {
 			// send request
 			g.SendNewSearchReq(b, keywords)
@@ -35,10 +48,17 @@ func (g *Gossiper) ManageSearch(initialBudget uint64, keywords []string) {
 				return
 			default:
 				// doubling budget (except if already near max)
-				if b < u.MaxSearchBudget/2 {
+				if doubleBudget && b < u.MaxSearchBudget/2 {
 					b *= 2
+					if g.ShouldPrint(logHW3, 2) {
+						g.Printer.Println("Doubling search budget")
+					}
+
 				} else {
-					b = u.MaxSearchBudget
+					if g.ShouldPrint(logHW3, 2) {
+						g.Printer.Println("Search failed!")
+					}
+					return
 				}
 			}
 		}

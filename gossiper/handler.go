@@ -336,8 +336,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 		bDest := rcvMsg.Destination != nil && *rcvMsg.Destination != ""
 		bFile := rcvMsg.File != nil && *rcvMsg.File != ""
 		bReq := rcvMsg.Request != nil && len(*rcvMsg.Request) > 0
-		bKw := rcvMsg.Keywords != nil && len(*rcvMsg.Keywords) > 0 &&
-			rcvMsg.Budget != nil
+		bKw := rcvMsg.Keywords != nil && len(*rcvMsg.Keywords) > 0
 
 		if bText && !bDest && !bFile && !bReq && !bKw {
 			// rumor message
@@ -403,7 +402,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			g.HandleDownload(*rcvMsg.File, *rcvMsg.Request)
 		} else if !bText && !bDest && !bFile && !bReq && bKw {
 			// file search
-			g.ManageSearch(*rcvMsg.Budget, *rcvMsg.Keywords)
+			g.ManageSearch(rcvMsg.Budget, *rcvMsg.Keywords)
 		} else {
 			g.Printer.Println("Error: invalid message received")
 		}

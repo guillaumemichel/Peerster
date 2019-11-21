@@ -61,7 +61,10 @@ const (
 	FileTimout int = 5
 
 	// DefaultSearchBudget default search budget
-	DefaultSearchBudget int = 2
+	DefaultSearchBudget uint64 = 2
+
+	// NoSearchBudget default search budget if not given as argument
+	NoSearchBudget int = 0
 
 	// MaxSearchBudget max search budget
 	MaxSearchBudget uint64 = 32

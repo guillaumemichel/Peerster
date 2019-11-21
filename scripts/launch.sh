@@ -3,6 +3,17 @@
 cd ..
 go build
 
+rm -r _SharedFiles/* > /dev/null 2>&1
+rm -r _Downloads/* > /dev/null 2>&1
+
+cd _SharedFiles
+echo 'hello world!' > hello.txt > /dev/null 2>&1
+wget https://media1.tenor.com/images/4c65228622e5b79fc6af8cba3c189fa9/tenor.gif > /dev/null 2>&1
+mv tenor.gif kiddo.gif > /dev/null 2>&1
+wget https://www.ietf.org/rfc/rfc1918.txt > /dev/null 2>&1
+
+cd ..
+
 counter=0
 n=$1
 debug=${2-111}

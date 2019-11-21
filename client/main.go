@@ -34,7 +34,7 @@ func main() {
 	req := flag.String("request", "",
 		"request a chunk or metafile of this hash")
 	kw := flag.String("keywords", "", "keywords for file search")
-	bg := flag.Int("budget", u.DefaultSearchBudget, "budget of the file search")
+	bg := flag.Int("budget", u.NoSearchBudget, "budget of the file search")
 
 	flag.Parse()
 	flag.Usage = func() {
@@ -134,7 +134,15 @@ func main() {
 	} else if !bText && !bDest && !bReq && bKw {
 		// file search
 
-		b := uint64(*bg)
+		n := uint64(*bg)
+		var b *uint64
+
+		// if budget not indicated, Budget is a nil
+		if n == uint64(u.NoSearchBudget) {
+			b = nil
+		} else {
+			b = &n
+		}
 		// split keywords
 		keywords := u.SplitKeywords(*kw)
 		// create the message
@@ -143,7 +151,7 @@ func main() {
 			Text:        "",
 			File:        nil,
 			Request:     nil,
-			Budget:      &b,
+			Budget:      b,
 			Keywords:    &keywords,
 		}
 	} else {
