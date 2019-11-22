@@ -290,3 +290,8 @@ func (g *Gossiper) SendFileRequest(fstatus *u.FileRequestStatus,
 		}
 	}
 }
+
+// SendTLC send a TLC message mongering
+func (g *Gossiper) SendTLC(tlc u.TLCMessage) {
+
+}

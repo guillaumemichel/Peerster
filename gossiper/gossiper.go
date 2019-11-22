@@ -54,12 +54,24 @@ type Gossiper struct {
 
 	SearchChans   map[*[]string]chan u.SearchReply
 	SearchResults []u.SearchFile
-	LogLvl        string
+
+	Hw3ex2 bool // hw3ex2 mode on or off
+	Hw3ex4 bool // hw3ex4 mode on or off
+	N      int  // number of connected peers
+	AckAll bool // ack every message irrespective of ID
+
+	StubbornTimeout time.Duration             // stubborn timeout
+	BlockStatuses   map[string]uint32         // vector clock of blocks origin -> ID
+	Round           uint32                    // current round
+	BlockChans      map[uint32]*chan u.TLCAck // tlc ack channels
+
+	LogLvl string // log level of the peerster
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
 func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
-	simple bool, rtimer, antiE int, loglvl string) *Gossiper {
+	simple, hw3ex2, hw3ex4, ackAll bool, rtimer, antiE, stubbornTimeout, n int,
+	loglvl string) *Gossiper {
 
 	// define gossip address and connection for the new gossiper
 	gossAddr, err := net.ResolveUDPAddr("udp4", *address)
@@ -116,7 +128,6 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	var chunks []u.FileChunk
 	var fstatus []*u.FileRequestStatus
 	var searchs []u.SearchStatus
-
 	/*
 		fstructs := f.LoadSharedFiles()
 	*/
@@ -126,6 +137,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		statuses := make([]u.FileRequestStatus, 0)
 		fstatus := u.FileStatusList{List: statuses}
 	*/
+	bChans := make(map[uint32]*chan u.TLCAck)
 
 	var newMessages []u.RumorMessage
 	nm := u.SyncNewMessages{Messages: newMessages}
@@ -133,6 +145,10 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	if *name == "" {
 		*name = u.DefaultGossiperName
 	}
+
+	bStatuses := make(map[string]uint32)
+	bStatuses[*name] = 0 // block vector clock starts at 0
+
 	status.Store(*name, uint32(1))
 	printer := log.New(os.Stdout, "", 0)
 
@@ -165,6 +181,13 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		SearchStatuses: searchs,
 		SearchMutex:    &sync.Mutex{},
 		SearchChans:    schan,
+		Hw3ex2:         hw3ex2,
+		Hw3ex4:         hw3ex4,
+		N:              n,
+		AckAll:         ackAll,
+		BlockStatuses:  bStatuses,
+		Round:          0,
+		BlockChans:     bChans,
 		LogLvl:         loglvl,
 	}
 }
@@ -251,7 +274,9 @@ func (g *Gossiper) Run() {
 
 // StartNewGossiper : Creates and starts a new gossiper
 func StartNewGossiper(address, name, UIPort, GUIPort, peerList *string,
-	simple bool, rtimer, antiE int, loglvl string) {
-	NewGossiper(address, name, UIPort, GUIPort, peerList, simple,
-		rtimer, antiE, loglvl).Run()
+	simple, hw3ex2, hw3ex4, ackAll bool, rtimer, antiE, stubbornTimeout,
+	n int, loglvl string) {
+
+	NewGossiper(address, name, UIPort, GUIPort, peerList, simple, hw3ex2,
+		hw3ex4, ackAll, rtimer, antiE, stubbornTimeout, n, loglvl).Run()
 }

@@ -82,4 +82,10 @@ const (
 
 	// MatchThreshold threshold of search matchs
 	MatchThreshold int = 2
+
+	// DefaultPeerNumber default N
+	DefaultPeerNumber int = 3
+
+	// StubbornTimeoutDefault in seconds
+	StubbornTimeoutDefault int = 5
 )

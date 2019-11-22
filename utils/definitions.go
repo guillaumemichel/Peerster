@@ -53,6 +53,8 @@ type GossipPacket struct {
 	DataReply     *DataReply
 	SearchRequest *SearchRequest
 	SearchReply   *SearchReply
+	TLCMessage    *TLCMessage
+	Ack           *TLCAck
 }
 
 // PrivateMessage : private message structure
@@ -188,3 +190,29 @@ type SearchFile struct {
 	NChunks      uint64
 	Complete     bool
 }
+
+// TxPublish transaction publish structure
+type TxPublish struct {
+	Name         string
+	Size         int64
+	MetafileHash []byte
+}
+
+// BlockPublish block publish structure
+type BlockPublish struct {
+	PrevHash    [32]byte
+	Transaction TxPublish
+}
+
+// TLCMessage structure
+type TLCMessage struct {
+	Origin      string
+	ID          uint32
+	Confirmed   bool
+	TxBlock     BlockPublish
+	VectorClock *StatusPacket
+	Fitness     float32
+}
+
+// TLCAck TLC message acknowledgement
+type TLCAck PrivateMessage

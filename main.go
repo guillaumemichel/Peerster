@@ -33,8 +33,16 @@ func main() {
 		"port for the GUI client")
 	rtimer := flag.Int("rtimer", u.RTimerDefault, "Timeout in seconds to "+
 		"send route rumors. 0 (default) means disable sending route rumors.")
+	stubbornTimeout := flag.Int("stubbornTimeout", u.StubbornTimeoutDefault,
+		"timeout to resend TLC message if not acked by a majority of peers")
 	loglvl := flag.String("debug", "111",
 		"debug flags that correspond to HW1-2-3")
+	hw3ex2Flag := flag.Bool("hw3ex2", false, "set to true to publish blocks"+
+		" when indexing files")
+	hw3ex4Flag := flag.Bool("hw3ex4", false, "set to true enable QSC")
+	n := flag.Int("N", u.DefaultPeerNumber, "number of connected peers")
+	ackAll := flag.Bool("ackAll", true, "ack every message irrespective"+
+		" of its ID")
 
 	flag.Parse()
 	// help message
@@ -45,5 +53,6 @@ func main() {
 
 	// start new gossiper
 	g.StartNewGossiper(gossipAddr, name, UIPort, GUIPort, peersInput,
-		*simple, *rtimer, *antiE, *loglvl)
+		*simple, *hw3ex2Flag, *hw3ex4Flag, *ackAll, *rtimer, *antiE,
+		*stubbornTimeout, *n, *loglvl)
 }
