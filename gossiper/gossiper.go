@@ -60,10 +60,13 @@ type Gossiper struct {
 	N      int  // number of connected peers
 	AckAll bool // ack every message irrespective of ID
 
-	StubbornTimeout time.Duration             // stubborn timeout
-	BlockStatuses   map[string]uint32         // vector clock of blocks origin -> ID
-	Round           uint32                    // current round
-	BlockChans      map[uint32]*chan u.TLCAck // tlc ack channels
+	StubbornTimeout time.Duration     // stubborn timeout
+	BlockStatuses   map[string]uint32 // vector clock of blocks origin -> ID
+	Round           uint32            // current round
+
+	BlockChans map[uint32]*chan u.TLCAck // tlc ack channels
+	BlockRumor map[string]map[string]map[uint32]*chan bool
+	// addr -> origin -> ID -> chan
 
 	LogLvl string // log level of the peerster
 }
@@ -133,6 +136,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	*/
 	fstructs := make([]u.FileStruct, 0)
 	schan := make(map[*[]string]chan u.SearchReply)
+	brum := make(map[string]map[string]map[uint32]*chan bool)
 	/*
 		statuses := make([]u.FileRequestStatus, 0)
 		fstatus := u.FileStatusList{List: statuses}
@@ -188,6 +192,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		BlockStatuses:  bStatuses,
 		Round:          0,
 		BlockChans:     bChans,
+		BlockRumor:     brum,
 		LogLvl:         loglvl,
 	}
 }

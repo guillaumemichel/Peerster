@@ -353,6 +353,11 @@ func (g *Gossiper) IndexFile(filename string) {
 			return
 		}
 	}
+	// manage TLC
+	g.ManageTCL(filename, fstruct.Size, fstruct.MetafileHash)
+	// once it is confirmed, continue
+	// may take some time to get acks
+
 	// add it to the gossiper
 	g.FileStructs = append(g.FileStructs, *fstruct)
 	g.PrintHashOfIndexedFile(filename,

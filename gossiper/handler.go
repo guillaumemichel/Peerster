@@ -567,3 +567,82 @@ func (g *Gossiper) SendRouteRumor() {
 	// sends it to a random peerw
 	g.SendRumorToRandomWithoutPacketNorInitial(rumor)
 }
+
+// Monger TLC messages
+func (g *Gossiper) Monger(gp, initial *u.GossipPacket, addr net.UDPAddr) {
+	if gp.TLCMessage == nil {
+		g.Printer.Println("Cannot monger TLC as no TLC given")
+		return
+	}
+	if initial == nil {
+		//initial = gp
+	}
+
+	// put the channel in BlockRumor
+	c := make(chan bool)
+	g.BlockRumor[addr.String()][gp.TLCMessage.Origin][gp.TLCMessage.ID] = &c
+}
+
+/*
+func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
+	addr net.UDPAddr, initial u.MessageReference) {
+
+	if initial.Origin == "" || initial.ID < 1 {
+		fmt.Println("Error: missing initial message in SendRumor")
+		return
+	}
+
+	// protobuf the message
+	if packet == nil || len(packet) == 0 {
+		gPacket := u.GossipPacket{Rumor: &rumor}
+		packet = u.ProtobufGossip(&gPacket)
+	}
+
+	targetStr := addr.String()
+
+	// create a unique identifier for the message
+	pendingACKStr := u.GetACKIdentifierSend(&rumor, &targetStr)
+
+	// associate a channel and initial message with unique message identifier
+	// in Gossiper
+	values := u.AckValues{
+		Channel:        make(chan bool),
+		InitialMessage: initial,
+	}
+	//g.ACKMutex.Lock()
+	g.PendingACKs.Store(*pendingACKStr, values)
+	//g.ACKMutex.Unlock()
+
+	g.PrintMongering(targetStr)
+	// send packet
+	_, err := g.GossipConn.WriteToUDP(packet, &addr)
+	if err != nil {
+		g.Printer.Println("Error while sending rumor")
+	}
+
+	// creates the timeout
+	timeout := make(chan bool)
+	go func() {
+		// timeout value defined in utils/constants.go
+		time.Sleep(time.Duration(u.TimeoutValue) * time.Second)
+		timeout <- true
+	}()
+
+	ackChan := values.Channel
+	select {
+	case <-timeout: // TIMEOUT
+		//g.ACKMutex.Lock()
+		g.PendingACKs.Delete(*pendingACKStr)
+		//g.ACKMutex.Unlock()
+		// send the initial packet to a random peer
+		packet := g.HistoryMessageToByte(initial)
+		g.SendRumorToRandom(packet, rumor, initial)
+		return
+	case <-ackChan: // ACK
+		//g.ACKMutex.Lock()
+		g.PendingACKs.Delete(*pendingACKStr)
+		//g.ACKMutex.Unlock()
+		return
+	}
+}
+*/

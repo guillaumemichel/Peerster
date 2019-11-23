@@ -7,12 +7,14 @@ import (
 )
 
 // ManageTCL sends TLCmessages and wait for acks
-func (g *Gossiper) ManageTCL(filename string, size int64, metafilehash []byte) {
+func (g *Gossiper) ManageTCL(filename string, size int64,
+	metafilehash u.ShaHash) {
+
 	// Create the Tx block
 	tx := u.TxPublish{
 		Name:         filename,
 		Size:         size,
-		MetafileHash: metafilehash,
+		MetafileHash: metafilehash[:],
 	}
 
 	// create an empty hash
@@ -42,15 +44,16 @@ func (g *Gossiper) ManageTCL(filename string, size int64, metafilehash []byte) {
 	g.BlockChans[g.Round] = &c
 	timeoutChan := make(chan bool)
 
-	ackCount := 1         // myself
+	acks := make(map[string]bool)
+	acks[g.Name] = true
 	majority := g.N/2 + 1 // more than 50%
 
 	// wait for a majority of acks
-	for ackCount < majority {
-		// send TLC
+	for len(acks) < majority {
 		g.SendTLC(tlc)
-		// wait for timeout
+		// timeout function
 		go func() {
+			// wait for timeout
 			time.Sleep(g.StubbornTimeout)
 			timeoutChan <- true
 		}()
@@ -58,17 +61,15 @@ func (g *Gossiper) ManageTCL(filename string, size int64, metafilehash []byte) {
 		for {
 			select {
 			case ack := <-c:
-				ackCount += int(ack.ID)
+				acks[ack.Origin] = true
 				continue
 			case <-timeoutChan:
 				break // timeout
 			}
 		}
 	}
-	// Send TLC
-	// Wait for acks
-	// Send TLC again ?
-	// Set valid to true
-	// Send TLC again ...
-	// Add file to gossiper
+	// confirm tcl to all peers
+	tlc.Confirmed = true
+	g.SendTLC(tlc)
+	// return to function that adds file to gossiper
 }
