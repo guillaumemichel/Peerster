@@ -12,7 +12,7 @@ import (
 func (g *Gossiper) Broadcast(packet []byte, sender *net.UDPAddr) {
 	//g.PeerMutex.Lock()
 	for _, v := range g.Peers {
-		if !u.EqualAddr(&v, sender) {
+		if !u.EqualAddr(v, *sender) {
 			g.GossipConn.WriteToUDP(packet, &v)
 		}
 	}
@@ -310,7 +310,7 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				g.RouteDataReply(*rcvMsg.DataReply)
 			} else if rcvMsg.SearchRequest != nil {
 				// deals with search requests
-				g.HandleSearchReq(*rcvMsg.SearchRequest)
+				g.HandleSearchReq(*rcvMsg.SearchRequest, udpAddr)
 			} else if rcvMsg.SearchReply != nil {
 				// deals with search reply
 				if g.ShouldPrint(logHW3, 3) {

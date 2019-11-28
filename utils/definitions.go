@@ -208,7 +208,7 @@ type BlockPublish struct {
 type TLCMessage struct {
 	Origin      string
 	ID          uint32
-	Confirmed   bool
+	Confirmed   int
 	TxBlock     BlockPublish
 	VectorClock *StatusPacket
 	Fitness     float32

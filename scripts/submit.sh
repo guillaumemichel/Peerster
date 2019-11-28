@@ -15,6 +15,8 @@ cd Peerster
 rm -r debug
 rm -r scripts
 rm -r testing
+rm -r quickexec
+rm -r .idea
 rm -r .git
 rm .gitignore
 rm *.pdf
@@ -23,6 +25,7 @@ rm _Downloads/*
 rm LICENSE
 rm Peerster
 rm client/client
+rm todo
 
 # tar everything
 cd ~/Desktop

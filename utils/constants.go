@@ -88,4 +88,7 @@ const (
 
 	// StubbornTimeoutDefault in seconds
 	StubbornTimeoutDefault int = 5
+
+	// UnconfirmedInt value for TLCMessage confirmed
+	UnconfirmedInt int = -1
 )

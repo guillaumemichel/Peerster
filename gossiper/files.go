@@ -30,6 +30,7 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 	found := false
 	copy(hash[:], dreq.HashValue)
 	// iterating over known structs
+	g.ChunkLock.Lock()
 	for _, c := range g.Chunks {
 		if hash == c.Hash {
 			//g.Printer.Println("\n", dreq.Origin)
@@ -38,6 +39,7 @@ func (g *Gossiper) HandleDataReq(dreq u.DataRequest) {
 			break
 		}
 	}
+	g.ChunkLock.Unlock()
 
 	if !found {
 		for _, fstruct := range g.FileStructs {
@@ -143,11 +145,13 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 				return
 			}
 			v.MetafileOK = true
+			g.ChunkLock.Lock()
 			g.Chunks = append(g.Chunks, u.FileChunk{
 				File: v.File,
 				Hash: h,
 				Data: drep.Data,
 			})
+			g.ChunkLock.Unlock()
 
 			v.PendingChunks = make([]u.ShaHash, 0)
 			for i := 0; i < len(drep.Data); i += u.ShaSize {
@@ -188,6 +192,7 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 						return
 					}
 					// append data to the one we already have
+					g.ChunkLock.Lock()
 					g.Chunks = append(g.Chunks, u.FileChunk{
 						File:   v.File,
 						Number: v.ChunkCount,
@@ -195,6 +200,7 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 						Data:   drep.Data,
 					})
 					v.File.Chunks[h] = &g.Chunks[len(g.Chunks)-1]
+					g.ChunkLock.Unlock()
 					//v.Data = append(v.Data, &g.Chunks[len(g.Chunks)-1])
 					// increase chunk counter
 					v.ChunkCount++
@@ -354,14 +360,16 @@ func (g *Gossiper) IndexFile(filename string) {
 		}
 	}
 	// manage TLC
-	g.ManageTCL(filename, fstruct.Size, fstruct.MetafileHash)
+	if g.Hw3ex2 {
+		g.ManageTCL(filename, fstruct.Size, fstruct.MetafileHash)
+	}
 	// once it is confirmed, continue
 	// may take some time to get acks
 
 	// add it to the gossiper
 	g.FileStructs = append(g.FileStructs, *fstruct)
 	g.PrintHashOfIndexedFile(filename,
-		hex.EncodeToString(fstruct.MetafileHash[:]))
+		hex.EncodeToString(fstruct.MetafileHash[:]), fstruct.NChunks)
 }
 
 // ScanFile scans a file and split it into chunks
@@ -408,10 +416,12 @@ func (g *Gossiper) ScanFile(f *os.File) (*u.FileStruct, error) {
 			Hash:   hash,
 			Data:   dat,
 		}
+		g.ChunkLock.Lock()
 		g.Chunks = append(g.Chunks, chunk)
 
 		// associate the hash with the chunk
 		chunks[hash] = &g.Chunks[len(g.Chunks)-1]
+		g.ChunkLock.Unlock()
 	}
 
 	if u.ChunkSize < len(metafile) {
@@ -432,6 +442,11 @@ func (g *Gossiper) HandleDownload(filename string, request []byte) {
 	var h u.ShaHash
 	copy(h[:], request)
 	for _, sr := range g.SearchResults {
+		if g.ShouldPrint(logHW3, 2) {
+			g.Printer.Println("Got hash:",
+				hex.EncodeToString(sr.MetafileHash[:]), "request is:",
+				hex.EncodeToString(h[:]))
+		}
 		if sr.MetafileHash == h {
 			g.DownloadFile(filename, sr)
 			return

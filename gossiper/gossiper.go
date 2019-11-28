@@ -48,6 +48,7 @@ type Gossiper struct {
 	FileStructs []u.FileStruct         // known files
 	FileStatus  []*u.FileRequestStatus // status to file requests
 	Chunks      []u.FileChunk          // list of chunks that the gossiper has
+	ChunkLock   *sync.Mutex
 
 	SearchStatuses []u.SearchStatus // list of current searches
 	SearchMutex    *sync.Mutex
@@ -182,6 +183,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		FileStructs:    fstructs,
 		FileStatus:     fstatus,
 		Chunks:         chunks,
+		ChunkLock:      &sync.Mutex{},
 		SearchStatuses: searchs,
 		SearchMutex:    &sync.Mutex{},
 		SearchChans:    schan,

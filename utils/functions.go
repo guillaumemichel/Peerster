@@ -102,10 +102,7 @@ func ParsePeers(peerList *string) *[]net.UDPAddr {
 
 // EqualAddr : compares the given UDPAddr, returns false if they are different
 // and true otherwise
-func EqualAddr(addr1, addr2 *net.UDPAddr) bool {
-	if addr1 == nil || addr2 == nil {
-		return false
-	}
+func EqualAddr(addr1, addr2 net.UDPAddr) bool {
 	return addr1.String() == addr2.String()
 	/* return (bytes.Equal(addr1.IP, addr2.IP) && addr1.Port == addr2.Port &&
 	addr1.Zone == addr2.Zone)*/
@@ -150,6 +147,12 @@ func TestMessageType(p *GossipPacket) bool {
 		n++
 	}
 	if p.SearchReply != nil {
+		n++
+	}
+	if p.TLCMessage != nil {
+		n++
+	}
+	if p.Ack != nil {
 		n++
 	}
 	if n > 1 {
@@ -283,22 +286,6 @@ func SameSearch(search SearchStatus, req SearchRequest) bool {
 	return false
 }
 
-// CheckSearchFileComplete check if a search file is complete and update the
-// corresponding field if it is
-func CheckSearchFileComplete(sf *SearchFile) {
-	complete := true
-	// iterate over all possible chunks
-	for i := uint64(0); i < sf.NChunks; i++ {
-		if _, ok := sf.Chunks[i]; !ok {
-			// if one is missing, not complete
-			complete = false
-		}
-	}
-	if complete {
-		sf.Complete = true
-	}
-}
-
 // FlattenKeywords flatten list of string to single string
 func FlattenKeywords(old []string) string {
 	if len(old) == 0 {
@@ -311,22 +298,22 @@ func FlattenKeywords(old []string) string {
 	return kw[:len(kw)-1]
 }
 
-/*
 // RemoveAddrFromPeers : remove the given address from the array of addresses
-func RemoveAddrFromPeers(peers *[]net.UDPAddr, addr *net.UDPAddr) *[]net.UDPAddr {
-
-	for i, v := range *peers {
-		if EqualAddr(&v, addr) && i == len(*peers)-1 {
+func RemoveAddrFromPeers(peers []net.UDPAddr, addr net.UDPAddr) []net.UDPAddr {
+	fmt.Println(peers)
+	fmt.Println(addr)
+	for i, v := range peers {
+		if EqualAddr(v, addr) {
 			var toReturn []net.UDPAddr
-			if i == len(*peers)-1 {
-				toReturn = append((*peers)[:i])
+			if i == len(peers)-1 {
+				toReturn = append((peers)[:i])
 			} else {
-				toReturn = append((*peers)[:i], (*peers)[i+1:]...)
+				toReturn = append((peers)[:i], (peers)[i+1:]...)
 			}
-			return &toReturn
+			fmt.Println(toReturn)
+			return toReturn
 		}
 	}
 	fmt.Println("Warning: couldn't remove address from peers")
 	return peers
 }
-*/

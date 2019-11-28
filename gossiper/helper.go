@@ -276,3 +276,23 @@ func (g *Gossiper) GetLastIDFromOrigin(origin string) uint32 {
 	// the origin, which is equal to the last message id
 	return uint32(len(v.([]u.HistoryMessage)))
 }
+
+// CheckSearchFileComplete check if a search file is complete and update the
+// corresponding field if it is
+func (g *Gossiper) CheckSearchFileComplete(sf *u.SearchFile) {
+	if sf.Complete {
+		return
+	}
+	complete := true
+	// iterate over all possible chunks
+	for i := uint64(0); i < sf.NChunks; i++ {
+		if _, ok := sf.Chunks[i]; !ok {
+			// if one is missing, not complete
+			complete = false
+		}
+	}
+	if complete {
+		sf.Complete = true
+		g.SearchResults = append(g.SearchResults, *sf)
+	}
+}

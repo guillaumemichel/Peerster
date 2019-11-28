@@ -33,7 +33,7 @@ func (g *Gossiper) ManageTCL(filename string, size int64,
 	tlc := u.TLCMessage{
 		Origin:      g.Name,
 		ID:          g.Round,
-		Confirmed:   false,
+		Confirmed:   u.UnconfirmedInt,
 		TxBlock:     bp,
 		VectorClock: nil,
 		Fitness:     0,
@@ -69,7 +69,9 @@ func (g *Gossiper) ManageTCL(filename string, size int64,
 		}
 	}
 	// confirm tcl to all peers
-	tlc.Confirmed = true
+	// WTFFFFFFFFFFFFFF ???
+	//tlc.Confirmed = true
+
 	g.SendTLC(tlc)
 	// return to function that adds file to gossiper
 }

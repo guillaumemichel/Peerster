@@ -2,6 +2,7 @@ package gossiper
 
 import (
 	"encoding/hex"
+	"net"
 	"sort"
 	"strings"
 	"time"
@@ -97,7 +98,7 @@ func (g *Gossiper) ManageSearch(initialBudget *uint64, keywords []string) {
 								sf.Chunks[i-1][rep.Origin] = true
 							}
 							// check if file is complete
-							u.CheckSearchFileComplete(&sf)
+							g.CheckSearchFileComplete(&sf)
 							found = true
 						}
 					}
@@ -121,7 +122,7 @@ func (g *Gossiper) ManageSearch(initialBudget *uint64, keywords []string) {
 							f.Chunks[i-1][rep.Origin] = true
 						}
 						// check if file is complete
-						u.CheckSearchFileComplete(&f)
+						g.CheckSearchFileComplete(&f)
 						// append the freshly created file to files
 						files = append(files, f)
 					}
@@ -154,11 +155,11 @@ func (g *Gossiper) SendNewSearchReq(budget uint64, keywords []string) {
 		Keywords: keywords,
 	}
 	// handles it
-	g.HandleSearchReq(req)
+	g.HandleSearchReq(req, nil)
 }
 
 // HandleSearchReq handles a search request
-func (g *Gossiper) HandleSearchReq(req u.SearchRequest) {
+func (g *Gossiper) HandleSearchReq(req u.SearchRequest, sender *net.UDPAddr) {
 
 	// register request
 	g.SearchMutex.Lock()
@@ -183,7 +184,9 @@ func (g *Gossiper) HandleSearchReq(req u.SearchRequest) {
 	}
 
 	// search for file locally
-	g.SearchForFile(req.Origin, req.Keywords)
+	if sender != nil {
+		g.SearchForFile(req.Origin, req.Keywords)
+	}
 	// substract 1 to the budget
 	req.Budget--
 
@@ -194,12 +197,20 @@ func (g *Gossiper) HandleSearchReq(req u.SearchRequest) {
 	if req.Budget > 0 {
 		quotient := int(req.Budget) / len(g.Peers)
 		rest := int(req.Budget) % len(g.Peers)
-		randPeers := u.ChooseCRandomAmongN(rest, len(g.Peers))
+
+		nPeers := len(g.Peers)
+		peers := g.Peers
+		if sender != nil {
+			// remove sending peer
+			nPeers--
+			peers = u.RemoveAddrFromPeers(peers, *sender)
+		}
+		randPeers := u.ChooseCRandomAmongN(rest, nPeers)
 		if randPeers == nil {
 			return
 		}
 
-		for i, p := range g.Peers {
+		for i, p := range peers {
 			// set the newbudget for each request to budget/n_peers
 			myBudget := quotient
 			// if p was randomly chosen add 1 to its budget
@@ -214,6 +225,10 @@ func (g *Gossiper) HandleSearchReq(req u.SearchRequest) {
 					Budget:   uint64(myBudget),
 					Keywords: req.Keywords,
 				}
+				if g.ShouldPrint(logHW3, 2) {
+					g.Printer.Println("Sending request to", p.String(),
+						"with budget", newReq.Budget)
+				}
 				gp := u.GossipPacket{SearchRequest: &newReq}
 				// route the request to next peer
 				g.SendPacketToNeighbor(p, gp)
@@ -227,11 +242,18 @@ func (g *Gossiper) SearchForFile(dest string, keywords []string) {
 	// create a map from filename to possessed chunk numbers
 	chunkMap := make(map[*u.FileStruct]map[int]bool)
 	// iterate over all known chunks
+	g.ChunkLock.Lock()
+	if g.ShouldPrint(logHW3, 2) {
+		g.Printer.Println("Chunk number:", len(g.Chunks))
+	}
 	for _, c := range g.Chunks {
 		// iterate over all keywords
 		for _, w := range keywords {
 			// if the name of the chunk correspond to a keyword
 			if strings.Contains(c.File.Name, w) {
+				if g.ShouldPrint(logHW3, 2) {
+					g.Printer.Println("Match to request! File:", c.File.Name)
+				}
 				// if filename's map doesn't exist yet
 				if _, ok := chunkMap[c.File]; !ok {
 					// initialize the map corresponding to the filename
@@ -242,6 +264,7 @@ func (g *Gossiper) SearchForFile(dest string, keywords []string) {
 			}
 		}
 	}
+	g.ChunkLock.Unlock()
 
 	results := make([]*u.SearchResult, 0)
 	for k, v := range chunkMap {

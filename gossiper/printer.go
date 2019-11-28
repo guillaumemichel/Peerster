@@ -150,10 +150,11 @@ func (g *Gossiper) PrintSentPrivateMessage(dest, text string) {
 }
 
 // PrintHashOfIndexedFile print the hash of an indexed file
-func (g *Gossiper) PrintHashOfIndexedFile(file, hash string) {
+func (g *Gossiper) PrintHashOfIndexedFile(file, hash string, n int) {
 	if g.ShouldPrint(logHW2, 1) || g.ShouldPrint(logHW3, 1) {
 
-		g.Printer.Printf("INDEXED file %s, hash is %s\n", file, hash)
+		g.Printer.Printf("INDEXED file %s, hash is %s, %d chunks\n",
+			file, hash, n)
 	}
 }
 
@@ -178,5 +179,42 @@ func (g *Gossiper) PrintFoundMatch(filename, peer, metahash string,
 func (g *Gossiper) PrintSearchFinished() {
 	if g.ShouldPrint(logHW3, 1) {
 		g.Printer.Println("SEARCH FINISHED")
+	}
+}
+
+// PrintUnconfirmedGossip print unconfirmed gossipe message
+func (g *Gossiper) PrintUnconfirmedGossip(origin, filename, metahash string,
+	id, size int) {
+	if g.ShouldPrint(logHW3, 1) {
+		g.Printer.Printf("UNCONFIRMED GOSSIP origin %s ID %d file name %s "+
+			"size %d metahash %s\n", origin, id, filename, size, metahash)
+	}
+}
+
+// PrintConfirmedGossip message
+func (g *Gossiper) PrintConfirmedGossip(origin, filename, metahash string,
+	id, size int) {
+	if g.ShouldPrint(logHW3, 1) {
+		g.Printer.Printf("CONFIRMED GOSSIP origin %s ID %d file name %s size"+
+			"%d metahash %s\n", origin, id, filename, size, metahash)
+	}
+}
+
+// PrintSendingAck message
+func (g *Gossiper) PrintSendingAck(origin string, id int) {
+	if g.ShouldPrint(logHW3, 1) {
+		g.Printer.Printf("SENDING ACK origin %s ID %d\n", origin, id)
+	}
+}
+
+// PrintReBroadcastID message
+func (g *Gossiper) PrintReBroadcastID(id int, names []string) {
+	if g.ShouldPrint(logHW3, 1) {
+		list := ""
+		for _, n := range names {
+			list += n + ","
+		}
+		g.Printer.Printf("RE-BROADCAST ID %d WITNESSES %s\n",
+			id, list[:len(list)-1])
 	}
 }
