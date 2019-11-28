@@ -56,7 +56,7 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 	targetStr := addr.String()
 
 	// create a unique identifier for the message
-	pendingACKStr := u.GetACKIdentifierSend(&rumor, &targetStr)
+	pendingACKStr := u.GetACKIdentifierSend(rumor.ID, rumor.Origin, targetStr)
 
 	// associate a channel and initial message with unique message identifier
 	// in Gossiper
@@ -65,7 +65,7 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 		InitialMessage: initial,
 	}
 	//g.ACKMutex.Lock()
-	g.PendingACKs.Store(*pendingACKStr, values)
+	g.PendingACKs.Store(pendingACKStr, values)
 	//g.ACKMutex.Unlock()
 
 	g.PrintMongering(targetStr)
@@ -87,7 +87,7 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 	select {
 	case <-timeout: // TIMEOUT
 		//g.ACKMutex.Lock()
-		g.PendingACKs.Delete(*pendingACKStr)
+		g.PendingACKs.Delete(pendingACKStr)
 		//g.ACKMutex.Unlock()
 		// send the initial packet to a random peer
 		packet := g.HistoryMessageToByte(initial)
@@ -95,7 +95,7 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 		return
 	case <-ackChan: // ACK
 		//g.ACKMutex.Lock()
-		g.PendingACKs.Delete(*pendingACKStr)
+		g.PendingACKs.Delete(pendingACKStr)
 		//g.ACKMutex.Unlock()
 		return
 	}
@@ -575,8 +575,20 @@ func (g *Gossiper) Monger(gp, initial *u.GossipPacket, addr net.UDPAddr) {
 		return
 	}
 	if initial == nil {
-		//initial = gp
+		initial = gp
 	}
+
+	var origin string
+	var id uint32
+	if gp.Rumor != nil {
+		origin = gp.Rumor.Origin
+		id = gp.Rumor.ID
+	} else if gp.TLCMessage != nil {
+		origin = gp.TLCMessage.Origin
+		id = gp.TLCMessage.ID
+	}
+
+	pendingACKStr := u.GetACKIdentifierSend(id, origin, addr.String())
 
 	// put the channel in BlockRumor
 	c := make(chan bool)
@@ -584,7 +596,9 @@ func (g *Gossiper) Monger(gp, initial *u.GossipPacket, addr net.UDPAddr) {
 }
 
 /*
-func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
+// RumorMonger : send rumor or TLC to the given peer, deals with timeouts
+// and everything
+func (g *Gossiper) RumorMonger(packet []byte, rumor u.RumorMessage,
 	addr net.UDPAddr, initial u.MessageReference) {
 
 	if initial.Origin == "" || initial.ID < 1 {
@@ -645,4 +659,5 @@ func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
 		return
 	}
 }
+
 */

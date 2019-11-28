@@ -169,13 +169,13 @@ func TestMessageType(p *GossipPacket) bool {
 
 // GetACKIdentifierSend : return the string corresponding to the ACK identifier
 // of the given rumor when sending a message
-func GetACKIdentifierSend(rumor *RumorMessage, dest *string) *AckIdentifier {
+func GetACKIdentifierSend(id uint32, origin, dest string) AckIdentifier {
 	identifer := AckIdentifier{
-		Peer:   *dest,
-		Origin: rumor.Origin,
-		ID:     rumor.ID + 1,
+		Peer:   dest,
+		Origin: origin,
+		ID:     id + 1,
 	}
-	return &identifer
+	return identifer
 }
 
 // GetACKIdentifierReceive : return the string corresponding to the ACK
