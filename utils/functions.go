@@ -167,6 +167,7 @@ func TestMessageType(p *GossipPacket) bool {
 	return true
 }
 
+/*
 // GetACKIdentifierSend : return the string corresponding to the ACK identifier
 // of the given rumor when sending a message
 func GetACKIdentifierSend(id uint32, origin, dest string) AckIdentifier {
@@ -177,7 +178,18 @@ func GetACKIdentifierSend(id uint32, origin, dest string) AckIdentifier {
 	}
 	return identifer
 }
+*/
 
+// GetAckIdentifier get the unique message identifier associated with the
+// given parameters.
+// origin: Origin of the acked message
+// peer: peer with whom the gossip is exchanged
+// id: Id of the gossip
+func GetAckIdentifier(origin, peer string, id uint32) string {
+	return origin + "@" + strconv.Itoa(int(id)) + "@" + peer
+}
+
+/*
 // GetACKIdentifierReceive : return the string corresponding to the ACK
 // identifier of the given ack when receiving a message
 func GetACKIdentifierReceive(nextID uint32, rumorOrigin,
@@ -189,6 +201,7 @@ func GetACKIdentifierReceive(nextID uint32, rumorOrigin,
 	}
 	return &identifier
 }
+*/
 
 // SyncMapCount : count the number of elements in a sync map
 func SyncMapCount(sm *sync.Map) uint32 {

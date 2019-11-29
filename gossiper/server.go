@@ -11,12 +11,17 @@ import (
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
+const (
+	postreq = "POST"
+	getreq  = "GET"
+)
+
 // StartServer : starts a server
 func (g *Gossiper) StartServer() {
 
 	getLatestRumorMessagesHandler := func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
-		case "GET":
+		case getreq:
 			s := r.FormValue("number")
 			n, _ := strconv.Atoi(s)
 
@@ -33,7 +38,7 @@ func (g *Gossiper) StartServer() {
 
 	getPeers := func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
-		case "GET":
+		case getreq:
 			s := r.FormValue("number")
 			n, _ := strconv.Atoi(s)
 
@@ -51,7 +56,7 @@ func (g *Gossiper) StartServer() {
 	sendMsg := func(w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
-		case "POST":
+		case postreq:
 			msg := r.FormValue("message")
 			dst := r.FormValue("dest")
 			g.SendMessage(msg, dst)
@@ -61,7 +66,7 @@ func (g *Gossiper) StartServer() {
 	addPeer := func(w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
-		case "POST":
+		case postreq:
 			msg := r.FormValue("peer")
 			addr, err := net.ResolveUDPAddr("udp4", msg)
 			if err == nil {
@@ -72,7 +77,7 @@ func (g *Gossiper) StartServer() {
 
 	getGossiperID := func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
-		case "GET":
+		case getreq:
 			id := g.GetPeerID()
 			msgListJSON, _ := json.Marshal(id)
 			// error handling, etc...
@@ -84,7 +89,7 @@ func (g *Gossiper) StartServer() {
 
 	destinationHandler := func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
-		case "GET":
+		case getreq:
 			// load last dest received
 			s := r.FormValue("dest_count")
 			n, _ := strconv.Atoi(s)
@@ -102,7 +107,7 @@ func (g *Gossiper) StartServer() {
 
 	pmHandler := func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
-		case "GET":
+		case getreq:
 			// load last dest received
 			s := r.FormValue("last_pm")
 			n, _ := strconv.Atoi(s)
@@ -120,7 +125,7 @@ func (g *Gossiper) StartServer() {
 
 	indexFile := func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
-		case "POST":
+		case postreq:
 			fn := r.FormValue("filename")
 			err := u.CheckFilename(fn)
 			if err == nil {
@@ -134,7 +139,7 @@ func (g *Gossiper) StartServer() {
 
 	requestFile := func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
-		case "POST":
+		case postreq:
 			fn := r.FormValue("filename")
 			hash := r.FormValue("hash")
 			dest := r.FormValue("destination")

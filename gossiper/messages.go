@@ -127,7 +127,7 @@ func (g *Gossiper) RequestFile(name, dest string, hash []byte) {
 	}
 
 	g.RouteMutex.Lock()
-	_, ok := g.Routes.Load(dest)
+	_, ok := g.Routes[dest]
 	g.RouteMutex.Unlock()
 	if !ok {
 		fmt.Println("WARNING: no route to", dest, ", dropping the request")

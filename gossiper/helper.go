@@ -67,17 +67,16 @@ func (g *Gossiper) GetLastPeers(last string) []string {
 // GetDestinations return the last destinations not sync yet
 func (g *Gossiper) GetDestinations(c uint32) []string {
 	g.RouteMutex.Lock()
-	if c >= u.SyncMapCount(g.Routes) {
+	if int(c) >= len(g.Routes) {
 		g.RouteMutex.Unlock()
 		return nil
 	}
-	var dests []string
-	// append all keys (string) of routes to dests
-	f := func(k, v interface{}) bool {
-		dests = append(dests, k.(string))
-		return false
+	dests := make([]string, len(g.Routes))
+	i := 0
+	for v := range g.Routes {
+		dests[i] = v
+		i++
 	}
-	g.Routes.Range(f)
 	g.RouteMutex.Unlock()
 	return dests
 }
@@ -112,6 +111,7 @@ func (g *Gossiper) ReceiveOK(ok bool, rcvBytes []byte) bool {
 	return true
 }
 
+/*
 // RecoverHistoryRumor : recover a message from rumor history
 func (g *Gossiper) RecoverHistoryRumor(ref u.MessageReference) u.RumorMessage {
 
@@ -136,7 +136,9 @@ func (g *Gossiper) RecoverHistoryRumor(ref u.MessageReference) u.RumorMessage {
 	}
 	return rumor
 }
+*/
 
+/*
 // HistoryMessageToByte : recover a rumor message from history, protobuf it
 // and sends back an array of bytes
 func (g *Gossiper) HistoryMessageToByte(ref u.MessageReference) []byte {
@@ -145,7 +147,98 @@ func (g *Gossiper) HistoryMessageToByte(ref u.MessageReference) []byte {
 	packet := u.ProtobufGossip(&u.GossipPacket{Rumor: &rumor})
 	return packet
 }
+*/
 
+// WriteGossipToHistory write a gossip packet to history
+func (g *Gossiper) WriteGossipToHistory(gp u.GossipPacket) bool {
+	var origin string
+	var id uint32
+
+	// set origin and id according to the gossip type
+	if gp.Rumor != nil {
+		origin = gp.Rumor.Origin
+		id = gp.Rumor.ID
+	} else if gp.TLCMessage != nil {
+		origin = gp.TLCMessage.Origin
+		id = gp.TLCMessage.ID
+	} else {
+		if g.ShouldPrint(logHW3, 1) {
+			g.Printer.Println("Cannot write the gossip to history invalid type")
+		}
+		return false
+	}
+
+	// discard messages without origin
+	if origin == "" {
+		return false
+	}
+
+	g.HistoryMutex.Lock()
+	if _, ok := g.PacketHistory[origin]; !ok {
+		// unknown origin, add it to wantlist
+		g.WantList.Store(origin, uint32(1))
+
+		g.PacketHistory[origin] = make(map[uint32]u.GossipPacket)
+	}
+
+	if _, ok := g.PacketHistory[origin][id]; ok {
+		// packet already written
+		g.HistoryMutex.Unlock()
+
+		return false
+	}
+
+	// write packet to history
+	g.PacketHistory[origin][id] = gp
+
+	l := len(g.PacketHistory[origin])
+	g.HistoryMutex.Unlock()
+
+	if int(id) <= l {
+		// filling missing slot
+		oldID, ok := g.WantList.Load(origin)
+		if !ok {
+			g.Printer.Println("Fatal: history write error, uncomplete wantlist")
+		}
+		currID := oldID.(uint32)
+		ok = true
+		g.HistoryMutex.Lock()
+		for ok {
+			// to get first missing id
+			_, ok = g.PacketHistory[origin][currID]
+			currID++
+		}
+		g.HistoryMutex.Unlock()
+		// update nextID
+		g.WantList.Store(origin, currID)
+
+	} else if int(id) == l+1 {
+		// next gossip
+		// update wantlist
+		g.WantList.Store(origin, id+1)
+	} else if int(id) > l+1 {
+		// out of order (early)
+
+		// do nothing
+	} else {
+		if g.ShouldPrint(logHW3, 1) {
+			g.Printer.Println("Cannot write to gossip history, wrong id")
+		}
+	}
+
+	// update new messages history (for GUI)
+	if gp.Rumor != nil {
+		if gp.Rumor.Text != "" {
+			g.NewMessages.Mutex.Lock()
+			g.NewMessages.Messages = append(g.NewMessages.Messages, *gp.Rumor)
+			g.NewMessages.Mutex.Unlock()
+		}
+	}
+
+	return true
+}
+
+/*
 // WriteRumorToHistory : write a given message to Gossiper message history
 // return false if message already known, true otherwise
 func (g *Gossiper) WriteRumorToHistory(rumor u.RumorMessage) bool {
@@ -239,11 +332,12 @@ func (g *Gossiper) WriteRumorToHistory(rumor u.RumorMessage) bool {
 
 	if rumor.Text != "" {
 		g.NewMessages.Mutex.Lock()
-		defer g.NewMessages.Mutex.Unlock()
 		g.NewMessages.Messages = append(g.NewMessages.Messages, rumor)
+		g.NewMessages.Mutex.Unlock()
 	}
 	return true
 }
+*/
 
 // GetPeerID : returns the name of the peer
 func (g *Gossiper) GetPeerID() string {
@@ -262,6 +356,7 @@ func (g *Gossiper) GetNewMessages(c int) []u.RumorMessage {
 	return messages[c:]
 }
 
+/*
 // GetLastIDFromOrigin returns the last message ID received from origin
 func (g *Gossiper) GetLastIDFromOrigin(origin string) uint32 {
 	// load the history for the given origin
@@ -276,6 +371,7 @@ func (g *Gossiper) GetLastIDFromOrigin(origin string) uint32 {
 	// the origin, which is equal to the last message id
 	return uint32(len(v.([]u.HistoryMessage)))
 }
+*/
 
 // CheckSearchFileComplete check if a search file is complete and update the
 // corresponding field if it is

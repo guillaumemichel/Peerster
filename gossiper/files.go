@@ -494,7 +494,7 @@ func (g *Gossiper) DownloadFile(filename string, f u.SearchFile) {
 		dests[i] = make([]string, 0)
 		for k := range f.Chunks[i] {
 			// if we have a route to dest, add it to dests
-			if _, ok := g.Routes.Load(k); ok {
+			if _, ok := g.Routes[k]; ok {
 				dests[i] = append(dests[i], k)
 				allDests[k] = true
 			}

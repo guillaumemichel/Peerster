@@ -66,30 +66,10 @@ type PrivateMessage struct {
 	HopLimit    uint32
 }
 
-// HistoryMessage : message stored in Gossiper history in an arry identifying
-// the origin of those messages
-type HistoryMessage struct {
-	ID   uint32
-	Text string
-}
-
-// MessageReference : reference to a message stored in history
-type MessageReference struct {
-	Origin string
-	ID     uint32
-}
-
-// AckIdentifier : Ack/status identifier for a sent message
-type AckIdentifier struct {
-	Peer   string
-	Origin string
-	ID     uint32
-}
-
 // AckValues : values pointed by an AckIdentifier
 type AckValues struct {
-	Channel        chan bool
-	InitialMessage MessageReference
+	Channel        *chan bool
+	InitialMessage GossipPacket
 }
 
 // SyncNewMessages : sync slice of rumor messages

@@ -12,7 +12,7 @@ import (
 func (g *Gossiper) Broadcast(packet []byte, sender *net.UDPAddr) {
 	//g.PeerMutex.Lock()
 	for _, v := range g.Peers {
-		if !u.EqualAddr(v, *sender) {
+		if sender == nil || !u.EqualAddr(v, *sender) {
 			g.GossipConn.WriteToUDP(packet, &v)
 		}
 	}
@@ -29,125 +29,28 @@ func (g *Gossiper) SendStatus(dst *net.UDPAddr) {
 	g.GossipConn.WriteToUDP(packet, dst)
 }
 
-// SendRumorWithoutPacket create the byte packet and sends the rumor
-func (g *Gossiper) SendRumorWithoutPacket(rumor u.RumorMessage,
-	addr net.UDPAddr, initial u.MessageReference) {
-
-	gp := u.GossipPacket{Rumor: &rumor}
-	packet := u.ProtobufGossip(&gp)
-	g.SendRumor(packet, rumor, addr, initial)
-}
-
-// SendRumor : send rumor to the given peer, deals with timeouts and all
-func (g *Gossiper) SendRumor(packet []byte, rumor u.RumorMessage,
-	addr net.UDPAddr, initial u.MessageReference) {
-
-	if initial.Origin == "" || initial.ID < 1 {
-		fmt.Println("Error: missing initial message in SendRumor")
-		return
-	}
-
-	// protobuf the message
-	if packet == nil || len(packet) == 0 {
-		gPacket := u.GossipPacket{Rumor: &rumor}
-		packet = u.ProtobufGossip(&gPacket)
-	}
-
-	targetStr := addr.String()
-
-	// create a unique identifier for the message
-	pendingACKStr := u.GetACKIdentifierSend(rumor.ID, rumor.Origin, targetStr)
-
-	// associate a channel and initial message with unique message identifier
-	// in Gossiper
-	values := u.AckValues{
-		Channel:        make(chan bool),
-		InitialMessage: initial,
-	}
-	//g.ACKMutex.Lock()
-	g.PendingACKs.Store(pendingACKStr, values)
-	//g.ACKMutex.Unlock()
-
-	g.PrintMongering(targetStr)
-	// send packet
-	_, err := g.GossipConn.WriteToUDP(packet, &addr)
-	if err != nil {
-		g.Printer.Println("Error while sending rumor")
-	}
-
-	// creates the timeout
-	timeout := make(chan bool)
-	go func() {
-		// timeout value defined in utils/constants.go
-		time.Sleep(time.Duration(u.TimeoutValue) * time.Second)
-		timeout <- true
-	}()
-
-	ackChan := values.Channel
-	select {
-	case <-timeout: // TIMEOUT
-		//g.ACKMutex.Lock()
-		g.PendingACKs.Delete(pendingACKStr)
-		//g.ACKMutex.Unlock()
-		// send the initial packet to a random peer
-		packet := g.HistoryMessageToByte(initial)
-		g.SendRumorToRandom(packet, rumor, initial)
-		return
-	case <-ackChan: // ACK
-		//g.ACKMutex.Lock()
-		g.PendingACKs.Delete(pendingACKStr)
-		//g.ACKMutex.Unlock()
-		return
-	}
-}
-
-// SendRumorToRandom : sends a rumor with all specifications to a random peer
-func (g *Gossiper) SendRumorToRandom(packet []byte,
-	rumor u.RumorMessage, initial u.MessageReference) {
-
-	// get a random host to send the message
-	target := g.GetRandPeer()
-	if target != nil {
-		g.SendRumor(packet, rumor, *target, initial)
-	}
-}
-
-// SendRumorToRandomWithoutPacketNorInitial create a byte packet and an initial
-// message reference and calls SendRumorToRandom
-func (g *Gossiper) SendRumorToRandomWithoutPacketNorInitial(
-	rumor u.RumorMessage) {
-
-	// create the gossip packet and protobuf it
-	gp := u.GossipPacket{Rumor: &rumor}
-	packet := u.ProtobufGossip(&gp)
-	// create the message ref (as it is the first message)
-	ref := u.MessageReference{
-		Origin: rumor.Origin,
-		ID:     rumor.ID,
-	}
-	g.SendRumorToRandom(packet, rumor, ref)
-}
-
 // RoutePacket routes private messages, data requests and replies to next hop
 func (g *Gossiper) RoutePacket(dst string, gp u.GossipPacket) {
 	// load the next hop to destination
 	g.RouteMutex.Lock()
-	v, ok := g.Routes.Load(dst)
+	v, ok := g.Routes[dst]
 	g.RouteMutex.Unlock()
 
 	if !ok {
 		g.Printer.Println("Searchreply:", gp.SearchReply)
-		fmt.Println("No route to", dst)
+		g.Printer.Println("No route to", dst)
 		return
 	}
 
 	// resolve the udp address of the next hop
-	addr, err := net.ResolveUDPAddr("udp4", v.(string))
+	addr, err := net.ResolveUDPAddr("udp4", v)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
+	if g.ShouldPrint(logHW3, 2) {
+		g.Printer.Println("Routing packet to", *addr)
+	}
 	g.SendPacketToNeighbor(*addr, gp)
 }
 
@@ -181,6 +84,11 @@ func (g *Gossiper) DealWithPrivateMessage(pm u.PrivateMessage) {
 
 // RouteDataReq route data request to next hop
 func (g *Gossiper) RouteDataReq(dreq u.DataRequest) {
+	if g.ShouldPrint(logHW3, 2) {
+		g.Printer.Println("I got a data request to route", dreq)
+		g.Printer.Println("My name:", g.Name, "Dest:", dreq.Destination)
+	}
+
 	dst := dreq.Destination
 	if dst == g.Name {
 		g.HandleDataReq(dreq)
@@ -275,7 +183,8 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				// update the route if message not already received
 				g.UpdateRoute(*rumor, addrStr)
 
-				if g.WriteRumorToHistory(*rumor) {
+				if g.WriteGossipToHistory(*rcvMsg) {
+					//if g.WriteRumorToHistory(*rumor) {
 					//if rumor.Text != "" {
 					// prints message to console
 					g.PrintRumorMessage(*rumor, addrStr)
@@ -283,21 +192,15 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 
 					// ack the message
 					g.SendStatus(udpAddr)
-
-					// as the message doesn't change, we send rcvBytes
-					ref := u.MessageReference{
-						Origin: rumor.Origin,
-						ID:     rumor.ID,
-					}
-
-					g.SendRumorToRandom(rcvBytes, *rumor, ref)
+					// monger to random peer
+					g.Monger(rcvMsg, rcvMsg, *g.GetRandPeer())
 				}
 
 			} else if rcvMsg.Status != nil { // StatusMessage received
 				m := rcvMsg.Status
 				// prints message to console
 				g.PrintStatusMessage(*m, addrStr)
-				g.DealWithStatus(*m, addrStr, udpAddr)
+				g.HandleStatus(*m, *udpAddr)
 			} else if rcvMsg.Private != nil { // PrivateMessage received
 				pm := rcvMsg.Private
 				g.DealWithPrivateMessage(*pm)
@@ -320,6 +223,10 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			} else {
 				fmt.Println("Error: unrecognized message")
 			}
+		}
+	} else {
+		if g.ShouldPrint(logHW3, 2) {
+			g.Printer.Println("Invalid message from :", *udpAddr)
 		}
 	}
 }
@@ -354,10 +261,12 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			} else { // rumor mode
 				// creates a RumorMessage in GossipPacket to be broadcasted
 				rumor := g.CreateRumorMessage(rcvMsg.Text)
+				gp := u.GossipPacket{Rumor: &rumor}
 
 				//write message to history
-				if g.WriteRumorToHistory(rumor) {
-					g.SendRumorToRandomWithoutPacketNorInitial(rumor)
+				if g.WriteGossipToHistory(gp) {
+					// monger message to random peer
+					g.Monger(&gp, &gp, *g.GetRandPeer())
 				}
 			}
 
@@ -409,15 +318,83 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 	}
 }
 
-// DealWithStatus : deals with status messages
-func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
-	addr *net.UDPAddr) {
+// SendRouteRumor send a route rumor to a random peer
+func (g *Gossiper) SendRouteRumor() {
+	// create a route rumor message
+	rumor := g.CreateRouteMessage()
+	// write the route rumor in history
 
-	var initialMessage u.MessageReference
-	addrStr := (*addr).String()
+	gp := u.GossipPacket{Rumor: &rumor}
+	if !g.WriteGossipToHistory(gp) {
+		g.Printer.Println("Fatal: couldn't write own route rumor to history")
+	}
+	// sends it to a random peer
+	g.Monger(&gp, &gp, *g.GetRandPeer())
+}
 
-	// is the status an acknowledgement packet ?
+// Monger TLC messages
+func (g *Gossiper) Monger(gp, initial *u.GossipPacket, addr net.UDPAddr) {
+	if gp == nil {
+		return
+	}
+
+	addrStr := addr.String()
+
+	var origin string
+	var id uint32
+	if gp.Rumor != nil {
+		origin = gp.Rumor.Origin
+		id = gp.Rumor.ID
+		g.PrintMongering(addrStr)
+	} else if gp.TLCMessage != nil {
+		origin = gp.TLCMessage.Origin
+		id = gp.TLCMessage.ID
+	}
+
+	pendingACKStr := u.GetAckIdentifier(origin, addrStr, id)
+
+	c := make(chan bool)
+
+	g.ACKMutex.Lock()
+	// put the channel in BlockRumor
+	g.PendingGossip[pendingACKStr] = u.AckValues{
+		Channel:        &c,
+		InitialMessage: *initial,
+	}
+	g.ACKMutex.Unlock()
+
+	// protobuf and send gossip packet
+	g.SendPacketToNeighbor(addr, *gp)
+
+	// creates the timeout
+	timeout := make(chan bool)
+	go func() {
+		// timeout value defined in utils/constants.go
+		time.Sleep(time.Duration(u.TimeoutValue) * time.Second)
+		timeout <- true
+	}()
+
+	select {
+	case <-timeout: // TIMEOUT
+		g.ACKMutex.Lock()
+		delete(g.PendingGossip, pendingACKStr)
+		g.ACKMutex.Unlock()
+		// send the monger initial packet to a random peer
+		g.Monger(initial, initial, *g.GetRandPeer())
+
+	case <-c: // ACK
+		g.ACKMutex.Lock()
+		delete(g.PendingGossip, pendingACKStr)
+		g.ACKMutex.Unlock()
+
+	}
+}
+
+// HandleStatus handles a status received from a peer
+func (g *Gossiper) HandleStatus(status u.StatusPacket, addr net.UDPAddr) {
+	addrStr := addr.String()
 	ack := false
+	var initialPacket u.GossipPacket
 
 	// associate this ack with a pending one if any
 	// needs to be done fast, so there will be a second similar loop with non-
@@ -429,25 +406,21 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 			g.WantList.Store(v.Identifier, uint32(1))
 			//g.WantListMutex.Unlock()
 		}
-
 		// acknowledge rumor with ID lower than the ack we just recieved
 		for i := v.NextID; i > 0; i-- {
 			// we look for an ID lower than v.NextID
-			identifier := u.AckIdentifier{
-				Peer:   sender,
-				Origin: v.Identifier,
-				ID:     i,
-			}
+			ackIdentifier := u.GetAckIdentifier(v.Identifier, addrStr, i)
 			// if it is pending, we acknowledge it by writing to the channel
-			//g.ACKMutex.Lock()
-			va, ok := g.PendingACKs.Load(identifier)
-			//g.ACKMutex.Unlock()
+			g.ACKMutex.Lock()
+			va, ok := g.PendingGossip[ackIdentifier]
+			g.ACKMutex.Unlock()
 			if ok {
 				// write to the corresponding channel to stop timer in
 				//rumor message
-				va.(u.AckValues).Channel <- true
+				*(va.Channel) <- true
 				// set the initial message to the first message acked
-				initialMessage = va.(u.AckValues).InitialMessage
+				initialPacket = va.InitialMessage
+				// this status message is an acknowledgement
 				ack = true
 			}
 		}
@@ -462,23 +435,21 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 		//g.WantListMutex.Unlock()
 		if v.NextID < wantedID.(uint32) {
 			// reference of the message to recover from history
-			ref := u.MessageReference{Origin: v.Identifier, ID: v.NextID}
-			// rumor to send
-			rumor := g.RecoverHistoryRumor(ref)
-			if !ack {
-				initialMessage = u.MessageReference{
-					Origin: rumor.Origin,
-					ID:     rumor.ID,
-				}
-			}
 
-			g.SendRumorWithoutPacket(rumor, *addr, initialMessage)
+			g.HistoryMutex.Lock()
+			gp := g.PacketHistory[v.Identifier][v.NextID]
+			g.HistoryMutex.Unlock()
+			if ack {
+				g.Monger(&gp, &initialPacket, addr)
+			} else { // anti entropy
+				g.Monger(&gp, &gp, addr)
+			}
 			return
 		}
 	}
 
 	// iterate over g's wantlist, and look for files that peer doesn't have,
-	// and send it
+	// and send it, in the case where peer doesn't know a packet origin
 	f := func(k, v interface{}) bool {
 		// g knows the name, but haven't received a message yet from the peer
 		if v.(uint32) < 2 {
@@ -495,28 +466,17 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 		}
 		// if identifier not found in status, send 1st packet of that identifier
 		if !found {
-			//g.HistoryMutex.Lock()
-			array, ok := g.RumorHistory.Load(identifier)
-			//g.HistoryMutex.Unlock()
-			if ok && array.([]u.HistoryMessage)[0].ID == 1 {
-				// create the rumor
-				rumor := u.RumorMessage{
-					Origin: k.(string),
-					ID:     array.([]u.HistoryMessage)[0].ID,
-					Text:   array.([]u.HistoryMessage)[0].Text,
-				}
-
-				// if status packet, define initial message
-				if !ack {
-					initialMessage = u.MessageReference{
-						Origin: rumor.Origin,
-						ID:     rumor.ID,
-					}
-				}
-				// send it to the peer
-				g.SendRumorWithoutPacket(rumor, *addr, initialMessage)
-				return false
+			// load packet from history
+			g.HistoryMutex.Lock()
+			gp := g.PacketHistory[identifier][1]
+			g.HistoryMutex.Unlock()
+			// mongers it to the peer
+			if ack {
+				g.Monger(&gp, &initialPacket, addr)
+			} else { // anti entropy
+				g.Monger(&gp, &gp, addr)
 			}
+			return false
 		}
 		return true
 	}
@@ -532,7 +492,7 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 		//g.WantListMutex.Unlock()
 		if v.NextID > wantedID.(uint32) {
 			// send status to request it
-			g.SendStatus(addr)
+			g.SendStatus(&addr)
 			return
 		}
 	}
@@ -550,114 +510,7 @@ func (g *Gossiper) DealWithStatus(status u.StatusPacket, sender string,
 		// print flipped coin message
 		g.PrintFlippedCoin(target.String())
 
-		// recover the initial message to send to a random peer
-		rumor := g.RecoverHistoryRumor(initialMessage)
-
-		g.SendRumorWithoutPacket(rumor, *target, initialMessage)
-
+		// monger initial message to random peer
+		g.Monger(&initialPacket, &initialPacket, addr)
 	}
 }
-
-// SendRouteRumor send a route rumor to a random peer
-func (g *Gossiper) SendRouteRumor() {
-	// create a route rumor message
-	rumor := g.CreateRouteMessage()
-	// write the route rumor in history
-	g.WriteRumorToHistory(rumor)
-	// sends it to a random peerw
-	g.SendRumorToRandomWithoutPacketNorInitial(rumor)
-}
-
-// Monger TLC messages
-func (g *Gossiper) Monger(gp, initial *u.GossipPacket, addr net.UDPAddr) {
-	if gp.TLCMessage == nil {
-		g.Printer.Println("Cannot monger TLC as no TLC given")
-		return
-	}
-	if initial == nil {
-		initial = gp
-	}
-
-	var origin string
-	var id uint32
-	if gp.Rumor != nil {
-		origin = gp.Rumor.Origin
-		id = gp.Rumor.ID
-	} else if gp.TLCMessage != nil {
-		origin = gp.TLCMessage.Origin
-		id = gp.TLCMessage.ID
-	}
-
-	pendingACKStr := u.GetACKIdentifierSend(id, origin, addr.String())
-
-	// put the channel in BlockRumor
-	c := make(chan bool)
-	g.BlockRumor[addr.String()][gp.TLCMessage.Origin][gp.TLCMessage.ID] = &c
-}
-
-/*
-// RumorMonger : send rumor or TLC to the given peer, deals with timeouts
-// and everything
-func (g *Gossiper) RumorMonger(packet []byte, rumor u.RumorMessage,
-	addr net.UDPAddr, initial u.MessageReference) {
-
-	if initial.Origin == "" || initial.ID < 1 {
-		fmt.Println("Error: missing initial message in SendRumor")
-		return
-	}
-
-	// protobuf the message
-	if packet == nil || len(packet) == 0 {
-		gPacket := u.GossipPacket{Rumor: &rumor}
-		packet = u.ProtobufGossip(&gPacket)
-	}
-
-	targetStr := addr.String()
-
-	// create a unique identifier for the message
-	pendingACKStr := u.GetACKIdentifierSend(&rumor, &targetStr)
-
-	// associate a channel and initial message with unique message identifier
-	// in Gossiper
-	values := u.AckValues{
-		Channel:        make(chan bool),
-		InitialMessage: initial,
-	}
-	//g.ACKMutex.Lock()
-	g.PendingACKs.Store(*pendingACKStr, values)
-	//g.ACKMutex.Unlock()
-
-	g.PrintMongering(targetStr)
-	// send packet
-	_, err := g.GossipConn.WriteToUDP(packet, &addr)
-	if err != nil {
-		g.Printer.Println("Error while sending rumor")
-	}
-
-	// creates the timeout
-	timeout := make(chan bool)
-	go func() {
-		// timeout value defined in utils/constants.go
-		time.Sleep(time.Duration(u.TimeoutValue) * time.Second)
-		timeout <- true
-	}()
-
-	ackChan := values.Channel
-	select {
-	case <-timeout: // TIMEOUT
-		//g.ACKMutex.Lock()
-		g.PendingACKs.Delete(*pendingACKStr)
-		//g.ACKMutex.Unlock()
-		// send the initial packet to a random peer
-		packet := g.HistoryMessageToByte(initial)
-		g.SendRumorToRandom(packet, rumor, initial)
-		return
-	case <-ackChan: // ACK
-		//g.ACKMutex.Lock()
-		g.PendingACKs.Delete(*pendingACKStr)
-		//g.ACKMutex.Unlock()
-		return
-	}
-}
-
-*/

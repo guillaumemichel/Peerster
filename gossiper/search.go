@@ -39,15 +39,23 @@ func (g *Gossiper) ManageSearch(initialBudget *uint64, keywords []string) {
 		} else {
 			b = *initialBudget
 		}
+		timeout := make(chan bool)
 		for {
 			// send request
 			g.SendNewSearchReq(b, keywords)
-			time.Sleep(time.Duration(u.SearchPeriod))
+
+			// timeout
+			go func() {
+				// timeout value defined in utils/constants.go
+				time.Sleep(time.Duration(u.SearchPeriod))
+				timeout <- true
+			}()
+
 			select {
 			case <-endChan:
 				// end
 				return
-			default:
+			case <-timeout:
 				// doubling budget (except if already near max)
 				if doubleBudget && b < u.MaxSearchBudget/2 {
 					b *= 2

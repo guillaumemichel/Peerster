@@ -55,11 +55,4 @@ done
 
 sleep 5
 
-./client -UIPort 8081 -keywords hello,rfc -budget 3
-sleep 1
-./client -UIPort 8081 -file rfc1918.txt -request $rfchash
-./client -UIPort 8081 -file hello.txt -request $hellohash
-
-sleep 5
-
 pkill -f Peerster 2> /dev/null

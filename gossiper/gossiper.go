@@ -27,20 +27,20 @@ type Gossiper struct {
 
 	Mode string // mode of the gossiper (simple / rumor)
 
-	PendingACKs *sync.Map // map[u.AckIdentifier]u.AckValues
-	//ACKMutex    *sync.Mutex
+	//PendingACKs *sync.Map // map[u.AckIdentifier]u.AckValues
+	ACKMutex *sync.Mutex
 
 	WantList *sync.Map // map[string]uint32
 	//WantListMutex *sync.Mutex
 
-	RumorHistory *sync.Map // map[string][]u.HistoryMessage
+	//RumorHistory *sync.Map // map[string][]u.HistoryMessage
 	//HistoryMutex *sync.Mutex
 
 	AntiEntropy int                // anti entropy timeout value
 	NewMessages *u.SyncNewMessages // slice containing all rumors
 
-	Routes     *sync.Map   // map[string]string string of udp4
-	RouteMutex *sync.Mutex // mutex for the routes map
+	Routes     map[string]string // map[string]string string of udp4
+	RouteMutex *sync.Mutex       // mutex for the routes map
 
 	RTimer      int                    // routing timer
 	PrivateMsg  []u.PrivateMessage     // slice containing all private messages
@@ -68,6 +68,10 @@ type Gossiper struct {
 	BlockChans map[uint32]*chan u.TLCAck // tlc ack channels
 	BlockRumor map[string]map[string]map[uint32]*chan bool
 	// addr -> origin -> ID -> chan
+
+	PendingGossip map[string]u.AckValues               // uniqueidentifier->chan
+	PacketHistory map[string]map[uint32]u.GossipPacket // G0->3->packet
+	HistoryMutex  sync.Mutex
 
 	LogLvl string // log level of the peerster
 }
@@ -124,10 +128,9 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	} else {
 		mode = u.RumorModeStr
 	}
-	var acks sync.Map
-	var history sync.Map
+	//var acks sync.Map
 	var status sync.Map
-	var routes sync.Map
+	routes := make(map[string]string)
 	var pm []u.PrivateMessage
 	var chunks []u.FileChunk
 	var fstatus []*u.FileRequestStatus
@@ -135,6 +138,9 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	/*
 		fstructs := f.LoadSharedFiles()
 	*/
+	pendGossip := make(map[string]u.AckValues)
+	historyPacket := make(map[string]map[uint32]u.GossipPacket)
+
 	fstructs := make([]u.FileStruct, 0)
 	schan := make(map[*[]string]chan u.SearchReply)
 	brum := make(map[string]map[string]map[uint32]*chan bool)
@@ -167,17 +173,16 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		ClientConn: cliConn,
 		Peers:      peers,
 		//PeerMutex:     &sync.Mutex{},
-		Mode:        mode,
-		PendingACKs: &acks,
-		//ACKMutex:      &sync.Mutex{},
+		Mode: mode,
+		//PendingACKs: &acks,
+		ACKMutex: &sync.Mutex{},
 		WantList: &status,
 		//WantListMutex: &sync.Mutex{},
-		RumorHistory: &history,
 		//HistoryMutex:  &sync.Mutex{},
 		AntiEntropy:     antiE,
 		NewMessages:     &nm,
 		GUIPort:         guiPort,
-		Routes:          &routes,
+		Routes:          routes,
 		RouteMutex:      &sync.Mutex{},
 		RTimer:          rtimer,
 		PrivateMsg:      pm,
@@ -199,6 +204,9 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		BlockChans:      bChans,
 		BlockRumor:      brum,
 		LogLvl:          loglvl,
+		PendingGossip:   pendGossip,
+		PacketHistory:   historyPacket,
+		HistoryMutex:    sync.Mutex{},
 	}
 }
 

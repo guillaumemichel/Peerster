@@ -13,14 +13,17 @@ func (g *Gossiper) UpdateRoute(rumor u.RumorMessage, nextHop string) {
 	}
 	// test if the message has an higher ID than the one from which the route
 	// is already stored
-	if rumor.ID > g.GetLastIDFromOrigin(origin) {
+	g.HistoryMutex.Lock()
+	l := len(g.PacketHistory[origin]) + 1
+	g.HistoryMutex.Unlock()
+	if int(rumor.ID) > l {
 		// load the current route (if any)
 		//v, ok := g.Routes.Load(origin)
 		// if the route exists and is different of the given one, update it
 		//if !ok || v.(string) != nextHop {
 		// update route and print message
 		g.RouteMutex.Lock()
-		g.Routes.Store(origin, nextHop)
+		g.Routes[origin] = nextHop
 		g.RouteMutex.Unlock()
 		if rumor.Text != "" {
 			g.PrintUpdateRoute(origin, nextHop)
