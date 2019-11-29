@@ -401,9 +401,9 @@ func (g *Gossiper) HandleStatus(status u.StatusPacket, addr net.UDPAddr) {
 	// critical operations
 	for _, v := range status.Want {
 		// if origin no in want list, add it
-		if _, ok := g.WantList.Load(v.Identifier); !ok {
+		if _, ok := g.WantList[v.Identifier]; !ok {
 			//g.WantListMutex.Lock()
-			g.WantList.Store(v.Identifier, uint32(1))
+			g.WantList[v.Identifier] = uint32(1)
 			//g.WantListMutex.Unlock()
 		}
 		// acknowledge rumor with ID lower than the ack we just recieved
@@ -431,9 +431,9 @@ func (g *Gossiper) HandleStatus(status u.StatusPacket, addr net.UDPAddr) {
 		// if v.NextID is lower than the message we want, then we have stored
 		// the message that is wanted, so we send it to peer and return
 		//g.WantListMutex.Lock()
-		wantedID, _ := g.WantList.Load(v.Identifier)
+		wantedID := g.WantList[v.Identifier]
 		//g.WantListMutex.Unlock()
-		if v.NextID < wantedID.(uint32) {
+		if v.NextID < wantedID {
 			// reference of the message to recover from history
 
 			g.HistoryMutex.Lock()
@@ -450,47 +450,43 @@ func (g *Gossiper) HandleStatus(status u.StatusPacket, addr net.UDPAddr) {
 
 	// iterate over g's wantlist, and look for files that peer doesn't have,
 	// and send it, in the case where peer doesn't know a packet origin
-	f := func(k, v interface{}) bool {
-		// g knows the name, but haven't received a message yet from the peer
-		if v.(uint32) < 2 {
-			return true
-		}
-		found := false
-		identifier := k.(string)
-		// check if we can find the identifier in the status packet
-		for _, o := range status.Want {
-			if o.Identifier == identifier {
-				found = true
-				break
-			}
-		}
-		// if identifier not found in status, send 1st packet of that identifier
-		if !found {
-			// load packet from history
-			g.HistoryMutex.Lock()
-			gp := g.PacketHistory[identifier][1]
-			g.HistoryMutex.Unlock()
-			// mongers it to the peer
-			if ack {
-				g.Monger(&gp, &initialPacket, addr)
-			} else { // anti entropy
-				g.Monger(&gp, &gp, addr)
-			}
-			return false
-		}
-		return true
-	}
+
 	//g.WantListMutex.Lock()
-	g.WantList.Range(f)
+	for k, v := range g.WantList {
+		if v > 1 {
+			found := false
+			// check if we can find the identifier in the status packet
+			for _, o := range status.Want {
+				if o.Identifier == k {
+					found = true
+					break
+				}
+			}
+			// if identifier not found in status, send 1st packet of that identifier
+			if !found {
+				// load packet from history
+				g.HistoryMutex.Lock()
+				gp := g.PacketHistory[k][uint32(1)]
+				g.HistoryMutex.Unlock()
+				// mongers it to the peer
+				if ack {
+					g.Monger(&gp, &initialPacket, addr)
+				} else { // anti entropy
+					g.Monger(&gp, &gp, addr)
+				}
+				return
+			}
+		}
+	}
 	//g.WantListMutex.Unlock()
 
 	// check if g is late on peer, and request messages if true
 	for _, v := range status.Want {
 		// if nextID > a message we want, request it
 		//g.WantListMutex.Lock()
-		wantedID, _ := g.WantList.Load(v.Identifier)
+		wantedID := g.WantList[v.Identifier]
 		//g.WantListMutex.Unlock()
-		if v.NextID > wantedID.(uint32) {
+		if v.NextID > wantedID {
 			// send status to request it
 			g.SendStatus(&addr)
 			return

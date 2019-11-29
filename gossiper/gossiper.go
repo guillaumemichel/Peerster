@@ -30,8 +30,8 @@ type Gossiper struct {
 	//PendingACKs *sync.Map // map[u.AckIdentifier]u.AckValues
 	ACKMutex *sync.Mutex
 
-	WantList *sync.Map // map[string]uint32
-	//WantListMutex *sync.Mutex
+	WantList      map[string]uint32 // map[string]uint32
+	WantListMutex *sync.Mutex
 
 	//RumorHistory *sync.Map // map[string][]u.HistoryMessage
 	//HistoryMutex *sync.Mutex
@@ -129,7 +129,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		mode = u.RumorModeStr
 	}
 	//var acks sync.Map
-	var status sync.Map
+	status := make(map[string]uint32)
 	routes := make(map[string]string)
 	var pm []u.PrivateMessage
 	var chunks []u.FileChunk
@@ -162,7 +162,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	bStatuses := make(map[string]uint32)
 	bStatuses[*name] = 0 // block vector clock starts at 0
 
-	status.Store(*name, uint32(1))
+	status[*name] = uint32(1)
 	printer := log.New(os.Stdout, "", 0)
 
 	return &Gossiper{
@@ -175,10 +175,9 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		//PeerMutex:     &sync.Mutex{},
 		Mode: mode,
 		//PendingACKs: &acks,
-		ACKMutex: &sync.Mutex{},
-		WantList: &status,
-		//WantListMutex: &sync.Mutex{},
-		//HistoryMutex:  &sync.Mutex{},
+		ACKMutex:        &sync.Mutex{},
+		WantList:        status,
+		WantListMutex:   &sync.Mutex{},
 		AntiEntropy:     antiE,
 		NewMessages:     &nm,
 		GUIPort:         guiPort,

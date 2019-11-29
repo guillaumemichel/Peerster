@@ -47,13 +47,12 @@ func DebugStatusPacket(packet *[]byte) {
 
 // PrintWantlist : prints the wantlist of the Gossiper
 func (g *Gossiper) PrintWantlist() {
-	f := func(k, v interface{}) bool {
-		fmt.Printf("%s : %d\n", k.(string), v.(uint32))
-		return true
+	g.WantListMutex.Lock()
+	str := "\nDEBUG: Printing wantlist\n"
+	for k, v := range g.WantList {
+		str += fmt.Sprintf("%s : %d, ", k, v)
 	}
-	fmt.Println("\nDEBUG: Printing wantlist")
-	//g.WantListMutex.Lock()
-	g.WantList.Range(f)
-	//g.WantListMutex.Unlock()
-	fmt.Println()
+	g.WantListMutex.Unlock()
+	str += "\n\n"
+	g.Printer.Println(str)
 }

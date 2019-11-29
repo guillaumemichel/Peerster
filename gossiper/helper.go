@@ -176,7 +176,7 @@ func (g *Gossiper) WriteGossipToHistory(gp u.GossipPacket) bool {
 	g.HistoryMutex.Lock()
 	if _, ok := g.PacketHistory[origin]; !ok {
 		// unknown origin, add it to wantlist
-		g.WantList.Store(origin, uint32(1))
+		g.WantList[origin] = uint32(1)
 
 		g.PacketHistory[origin] = make(map[uint32]u.GossipPacket)
 	}
@@ -187,35 +187,35 @@ func (g *Gossiper) WriteGossipToHistory(gp u.GossipPacket) bool {
 
 		return false
 	}
+	l := len(g.PacketHistory[origin])
 
 	// write packet to history
 	g.PacketHistory[origin][id] = gp
 
-	l := len(g.PacketHistory[origin])
 	g.HistoryMutex.Unlock()
 
 	if int(id) <= l {
 		// filling missing slot
-		oldID, ok := g.WantList.Load(origin)
+		oldID, ok := g.WantList[origin]
 		if !ok {
 			g.Printer.Println("Fatal: history write error, uncomplete wantlist")
 		}
-		currID := oldID.(uint32)
 		ok = true
 		g.HistoryMutex.Lock()
 		for ok {
 			// to get first missing id
-			_, ok = g.PacketHistory[origin][currID]
-			currID++
+			_, ok = g.PacketHistory[origin][oldID]
+			oldID++
 		}
 		g.HistoryMutex.Unlock()
 		// update nextID
-		g.WantList.Store(origin, currID)
+		oldID--
+		g.WantList[origin] = oldID
 
 	} else if int(id) == l+1 {
 		// next gossip
 		// update wantlist
-		g.WantList.Store(origin, id+1)
+		g.WantList[origin] = id + 1
 	} else if int(id) > l+1 {
 		// out of order (early)
 

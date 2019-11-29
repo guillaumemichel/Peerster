@@ -23,19 +23,19 @@ func (g *Gossiper) CreateSimpleMessage(name, content string) u.SimpleMessage {
 // increases the rumorCount from the Gossiper
 func (g *Gossiper) CreateRumorMessage(content string) u.RumorMessage {
 
-	//g.WantListMutex.Lock()
-	id, ok := g.WantList.Load(g.Name)
+	g.WantListMutex.Lock()
+	id, ok := g.WantList[g.Name]
 	//g.WantListMutex.Unlock()
 	if !ok {
 		fmt.Println("Error: I don't know my name")
 	}
 	//g.WantListMutex.Lock()
-	g.WantList.Store(g.Name, uint32(id.(uint32)+1))
-	//g.WantListMutex.Unlock()
+	g.WantList[g.Name] = id + 1
+	g.WantListMutex.Unlock()
 
 	return u.RumorMessage{
 		Origin: g.Name,
-		ID:     id.(uint32),
+		ID:     id,
 		Text:   content,
 	}
 }
@@ -72,17 +72,15 @@ func (g *Gossiper) ReplaceRelayPeerSimple(
 // BuildStatusPacket : build a status packet for g
 func (g *Gossiper) BuildStatusPacket() u.StatusPacket {
 
-	var want []u.PeerStatus
+	g.WantListMutex.Lock()
+	want := make([]u.PeerStatus, len(g.WantList))
 
-	f := func(k, v interface{}) bool {
-		want = append(want, u.PeerStatus{Identifier: k.(string),
-			NextID: v.(uint32)})
-		return true
+	i := 0
+	for k, v := range g.WantList {
+		want[i] = u.PeerStatus{Identifier: k, NextID: v}
+		i++
 	}
-
-	//g.WantListMutex.Lock()
-	g.WantList.Range(f)
-	//g.WantListMutex.Unlock()
+	g.WantListMutex.Unlock()
 	sp := u.StatusPacket{Want: want}
 	return sp
 }
