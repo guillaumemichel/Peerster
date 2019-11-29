@@ -35,7 +35,7 @@ func main() {
 		"send route rumors. 0 (default) means disable sending route rumors.")
 	stubbornTimeout := flag.Int("stubbornTimeout", u.StubbornTimeoutDefault,
 		"timeout to resend TLC message if not acked by a majority of peers")
-	loglvl := flag.String("debug", "010",
+	loglvl := flag.String("debug", "111",
 		"debug flags that correspond to HW1-2-3")
 	hw3ex2Flag := flag.Bool("hw3ex2", false, "set to true to publish blocks"+
 		" when indexing files")
