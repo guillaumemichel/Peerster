@@ -1,6 +1,7 @@
 package gossiper
 
 import (
+	"encoding/hex"
 	"strconv"
 
 	u "github.com/guillaumemichel/Peerster/utils"
@@ -217,4 +218,20 @@ func (g *Gossiper) PrintReBroadcastID(id int, names []string) {
 		g.Printer.Printf("RE-BROADCAST ID %d WITNESSES %s\n",
 			id, list[:len(list)-1])
 	}
+}
+
+// PrintFreshTLC print TLC message on reception
+func (g *Gossiper) PrintFreshTLC(tlc u.TLCMessage) {
+	tx := tlc.TxBlock.Transaction
+
+	origin := tlc.Origin
+	id := tlc.ID
+	if tlc.Confirmed >= 0 {
+		g.PrintConfirmedGossip(origin, tx.Name,
+			hex.EncodeToString(tx.MetafileHash), int(id), int(tx.Size))
+	} else {
+		g.PrintUnconfirmedGossip(origin, tx.Name,
+			hex.EncodeToString(tx.MetafileHash), int(id), int(tx.Size))
+	}
+
 }

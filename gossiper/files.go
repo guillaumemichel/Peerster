@@ -447,7 +447,7 @@ func (g *Gossiper) HandleDownload(filename string, request []byte) {
 	var h u.ShaHash
 	copy(h[:], request)
 	for _, sr := range g.SearchResults {
-		if g.ShouldPrint(logHW3, 2) {
+		if g.ShouldPrint(logHW3, 3) {
 			g.Printer.Println("Got hash:",
 				hex.EncodeToString(sr.MetafileHash[:]), "request is:",
 				hex.EncodeToString(h[:]))

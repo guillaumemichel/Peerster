@@ -1,6 +1,7 @@
 package gossiper
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
@@ -291,5 +292,16 @@ func (g *Gossiper) SendFileRequest(fstatus *u.FileRequestStatus,
 
 // SendTLC send a TLC message mongering
 func (g *Gossiper) SendTLC(tlc u.TLCMessage) {
-	//TODO
+	tx := tlc.TxBlock.Transaction
+	if tlc.Confirmed < 0 {
+		// print message
+		g.PrintUnconfirmedGossip(tlc.Origin, tx.Name,
+			hex.EncodeToString(tx.MetafileHash), int(tlc.ID), int(tx.Size))
+	}
+
+	gp := u.GossipPacket{TLCMessage: &tlc}
+	// write gossip to history
+	g.WriteGossipToHistory(gp)
+	// monger the tlc
+	g.Monger(&gp, &gp, *g.GetRandPeer())
 }

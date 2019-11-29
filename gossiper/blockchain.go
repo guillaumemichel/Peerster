@@ -1,7 +1,6 @@
 package gossiper
 
 import (
-	"encoding/hex"
 	"time"
 
 	u "github.com/guillaumemichel/Peerster/utils"
@@ -29,7 +28,12 @@ func (g *Gossiper) ManageTCL(filename string, size int64,
 		PrevHash:    zeroes,
 		Transaction: tx,
 	}
-	id := g.Round
+	//id := g.Round
+
+	g.WantListMutex.Lock()
+	id := g.WantList[g.Name]
+	g.WantList[g.Name]++
+	g.WantListMutex.Unlock()
 
 	// Create the TLC message
 	tlc := u.TLCMessage{
@@ -50,25 +54,8 @@ func (g *Gossiper) ManageTCL(filename string, size int64,
 	acks[g.Name] = true
 	majority := g.N/2 + 1 // more than 50%
 
-	firstTime := true
-
 	// wait for a majority of acks
 	for len(acks) < majority {
-		if firstTime {
-			metahash := hex.EncodeToString(metafilehash[:])
-			g.PrintUnconfirmedGossip(g.Name, filename, metahash,
-				int(id), int(size))
-			firstTime = false
-		} else {
-			names := make([]string, len(acks))
-			c := 0
-			for n := range acks {
-				names[c] = n
-				c++
-			}
-			g.PrintReBroadcastID(int(id), names)
-		}
-
 		g.SendTLC(tlc)
 		// timeout function
 		go func() {
@@ -88,10 +75,39 @@ func (g *Gossiper) ManageTCL(filename string, size int64,
 		}
 	}
 	// confirm tcl to all peers
-	// WTFFFFFFFFFFFFFF ???
 	tlc.Confirmed = int(id)
 
+	// select new message id
+	g.WantListMutex.Lock()
+	tlc.ID = g.WantList[g.Name]
+	g.WantList[g.Name]++
+	g.WantListMutex.Unlock()
+
+	// get a list of names from a map
+	names := make([]string, len(acks))
+	i := 0
+	for name := range acks {
+		names[i] = name
+		i++
+	}
+	// print message and broadcast confirmed message
+	g.PrintReBroadcastID(int(id), names)
 	g.SendTLC(tlc)
 	// return to function that adds file to gossiper
 	return true
+}
+
+// AckTLC acks a TLC message
+func (g *Gossiper) AckTLC(tlc u.TLCMessage) {
+	// create the ack
+	ack := u.TLCAck{
+		Origin:      g.Name,
+		ID:          tlc.ID,
+		Text:        "",
+		Destination: tlc.Origin,
+		HopLimit:    u.DefaultHopLimit,
+	}
+	gp := u.GossipPacket{Ack: &ack}
+	// route packet to its destination
+	g.RoutePacket(tlc.Origin, gp)
 }

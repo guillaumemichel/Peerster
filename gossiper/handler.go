@@ -1,6 +1,7 @@
 package gossiper
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net"
 	"time"
@@ -48,7 +49,7 @@ func (g *Gossiper) RoutePacket(dst string, gp u.GossipPacket) {
 		fmt.Println(err)
 		return
 	}
-	if g.ShouldPrint(logHW3, 2) {
+	if g.ShouldPrint(logHW3, 3) {
 		g.Printer.Println("Routing packet to", *addr)
 	}
 	g.SendPacketToNeighbor(*addr, gp)
@@ -84,7 +85,7 @@ func (g *Gossiper) DealWithPrivateMessage(pm u.PrivateMessage) {
 
 // RouteDataReq route data request to next hop
 func (g *Gossiper) RouteDataReq(dreq u.DataRequest) {
-	if g.ShouldPrint(logHW3, 2) {
+	if g.ShouldPrint(logHW3, 3) {
 		g.Printer.Println("I got a data request to route", dreq)
 		g.Printer.Println("My name:", g.Name, "Dest:", dreq.Destination)
 	}
@@ -153,15 +154,27 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				g.PrintStatusMessage(*m, addrStr)
 				fmt.Println("Warning: gossiper running in Simple mode",
 					"and received a StatusPacket, discarding it")
+
 			} else if rcvMsg.Private != nil { // PrivateMessage received
 				fmt.Println("Warning: gossiper running in Simple mode",
 					"and received a Private message, discarding it")
+
 			} else if rcvMsg.DataRequest != nil {
 				fmt.Println("Warning: gossiper running in Simple mode",
 					"and received a Data Request, discarding it")
+
 			} else if rcvMsg.DataReply != nil {
 				fmt.Println("Warning: gossiper running in Simple mode",
 					"and received a Data Reply, discarding it")
+
+			} else if rcvMsg.TLCMessage != nil {
+				fmt.Println("Warning: gossiper running in Simple mode",
+					"and received a TLC message, discarding it")
+
+			} else if rcvMsg.Ack != nil {
+				fmt.Println("Warning: gossiper running in Simple mode",
+					"and received a TLC ack, discarding it")
+
 			} else {
 				fmt.Println("Error: unrecognized message")
 			}
@@ -184,11 +197,8 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				g.UpdateRoute(*rumor, addrStr)
 
 				if g.WriteGossipToHistory(*rcvMsg) {
-					//if g.WriteRumorToHistory(*rumor) {
-					//if rumor.Text != "" {
 					// prints message to console
 					g.PrintRumorMessage(*rumor, addrStr)
-					//}
 
 					// ack the message
 					g.SendStatus(udpAddr)
@@ -196,32 +206,57 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 					g.Monger(rcvMsg, rcvMsg, *g.GetRandPeer())
 				}
 
-			} else if rcvMsg.Status != nil { // StatusMessage received
+			} else if rcvMsg.Status != nil {
+				// StatusMessage received
 				m := rcvMsg.Status
 				// prints message to console
 				g.PrintStatusMessage(*m, addrStr)
 				g.HandleStatus(*m, *udpAddr)
-			} else if rcvMsg.Private != nil { // PrivateMessage received
+
+			} else if rcvMsg.Private != nil {
+				// PrivateMessage received
 				pm := rcvMsg.Private
 				g.DealWithPrivateMessage(*pm)
+
 			} else if rcvMsg.DataRequest != nil {
 				// deals with data request
 				dr := rcvMsg.DataRequest
 				g.RouteDataReq(*dr)
+
 			} else if rcvMsg.DataReply != nil {
 				// deals with data reply
 				g.RouteDataReply(*rcvMsg.DataReply)
+
 			} else if rcvMsg.SearchRequest != nil {
 				// deals with search requests
 				g.HandleSearchReq(*rcvMsg.SearchRequest, udpAddr)
+
 			} else if rcvMsg.SearchReply != nil {
 				// deals with search reply
 				if g.ShouldPrint(logHW3, 3) {
 					g.Printer.Println("Got search reply")
 				}
 				g.HandleSearchReply(*rcvMsg.SearchReply)
+
+			} else if rcvMsg.TLCMessage != nil {
+				// TLC message
+				if g.WriteGossipToHistory(*rcvMsg) {
+					// prints tlc message to console
+					g.PrintFreshTLC(*rcvMsg.TLCMessage)
+
+					// ack the message
+					g.SendStatus(udpAddr)
+					g.AckTLC(*rcvMsg.TLCMessage)
+					// monger to random peer
+					g.Monger(rcvMsg, rcvMsg, *g.GetRandPeer())
+				}
+
+			} else if rcvMsg.Ack != nil {
+				// TLC ack
+
 			} else {
-				fmt.Println("Error: unrecognized message")
+				g.Printer.Println(
+					"Error: unrecognized message, forgot hw3 flag ?")
 			}
 		}
 	} else {
@@ -258,6 +293,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				packet := u.ProtobufGossip(&gPacket)
 				// broadcast the message to all peers
 				g.Broadcast(packet, nil)
+
 			} else { // rumor mode
 				// creates a RumorMessage in GossipPacket to be broadcasted
 				rumor := g.CreateRumorMessage(rcvMsg.Text)
@@ -295,6 +331,7 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			} else {
 				g.PrintExpectedRumorMode("file index")
 			}
+
 		} else if !bText && bDest && bFile && bReq && !bKw {
 			// file request to host
 
@@ -309,9 +346,11 @@ func (g *Gossiper) HandleMessage(rcvBytes []byte, udpAddr *net.UDPAddr) {
 		} else if !bText && !bDest && bFile && bReq && !bKw {
 			// file request after search
 			g.HandleDownload(*rcvMsg.File, *rcvMsg.Request)
+
 		} else if !bText && !bDest && !bFile && !bReq && bKw {
 			// file search
 			g.ManageSearch(rcvMsg.Budget, *rcvMsg.Keywords)
+
 		} else {
 			g.Printer.Println("Error: invalid message received")
 		}
@@ -346,9 +385,20 @@ func (g *Gossiper) Monger(gp, initial *u.GossipPacket, addr net.UDPAddr) {
 		origin = gp.Rumor.Origin
 		id = gp.Rumor.ID
 		g.PrintMongering(addrStr)
+
 	} else if gp.TLCMessage != nil {
-		origin = gp.TLCMessage.Origin
-		id = gp.TLCMessage.ID
+		tlc := gp.TLCMessage
+		tx := tlc.TxBlock.Transaction
+
+		origin = tlc.Origin
+		id = tlc.ID
+		if tlc.Confirmed >= 0 && tlc.Origin != g.Name {
+			g.PrintConfirmedGossip(origin, tx.Name,
+				hex.EncodeToString(tx.MetafileHash), int(id), int(tx.Size))
+		} else if tlc.Confirmed < 0 {
+			g.PrintUnconfirmedGossip(origin, tx.Name,
+				hex.EncodeToString(tx.MetafileHash), int(id), int(tx.Size))
+		}
 	}
 
 	pendingACKStr := u.GetAckIdentifier(origin, addrStr, id)

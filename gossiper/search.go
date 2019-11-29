@@ -251,7 +251,7 @@ func (g *Gossiper) SearchForFile(dest string, keywords []string) {
 	chunkMap := make(map[*u.FileStruct]map[int]bool)
 	// iterate over all known chunks
 	g.ChunkLock.Lock()
-	if g.ShouldPrint(logHW3, 2) {
+	if g.ShouldPrint(logHW3, 3) {
 		g.Printer.Println("Chunk number:", len(g.Chunks))
 	}
 	for _, c := range g.Chunks {
@@ -259,7 +259,7 @@ func (g *Gossiper) SearchForFile(dest string, keywords []string) {
 		for _, w := range keywords {
 			// if the name of the chunk correspond to a keyword
 			if strings.Contains(c.File.Name, w) {
-				if g.ShouldPrint(logHW3, 2) {
+				if g.ShouldPrint(logHW3, 3) {
 					g.Printer.Println("Match to request! File:", c.File.Name)
 				}
 				// if filename's map doesn't exist yet

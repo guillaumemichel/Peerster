@@ -313,8 +313,6 @@ func FlattenKeywords(old []string) string {
 
 // RemoveAddrFromPeers : remove the given address from the array of addresses
 func RemoveAddrFromPeers(peers []net.UDPAddr, addr net.UDPAddr) []net.UDPAddr {
-	fmt.Println(peers)
-	fmt.Println(addr)
 	for i, v := range peers {
 		if EqualAddr(v, addr) {
 			var toReturn []net.UDPAddr
@@ -323,7 +321,6 @@ func RemoveAddrFromPeers(peers []net.UDPAddr, addr net.UDPAddr) []net.UDPAddr {
 			} else {
 				toReturn = append((peers)[:i], (peers)[i+1:]...)
 			}
-			fmt.Println(toReturn)
 			return toReturn
 		}
 	}
