@@ -45,7 +45,7 @@ func main() {
 		" rounds")
 	hw3ex4Flag := flag.Bool("hw3ex4", false, "set to true enable QSC")
 	n := flag.Int("N", u.DefaultPeerNumber, "number of connected peers")
-	ackAll := flag.Bool("ackAll", true, "ack every message irrespective"+
+	ackAll := flag.Bool("ackAll", false, "ack every message irrespective"+
 		" of its ID")
 	ackHopLimit := flag.Int("hopLimit", hoplim,
 		"hop limit for TLC ack messages")

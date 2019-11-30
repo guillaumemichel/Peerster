@@ -158,7 +158,7 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				// if message already known, discard it
 
 				// update the route if message not already received
-				g.UpdateRoute(*rumor, addrStr)
+				g.UpdateRoute(*rcvMsg, addrStr)
 
 				// ack the message
 				g.SendStatus(udpAddr)
@@ -211,6 +211,8 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 			} else if rcvMsg.TLCMessage != nil {
 				// TLC message
 
+				// update routing table
+				g.UpdateRoute(*rcvMsg, addrStr)
 				// send status to neighbor
 				g.SendStatus(udpAddr)
 				// verify if we should send tlc ack for previous tlc
@@ -343,7 +345,7 @@ func (g *Gossiper) SendRouteRumor() {
 
 // Monger TLC messages
 func (g *Gossiper) Monger(gp, initial *u.GossipPacket, addr net.UDPAddr) {
-	if gp == nil {
+	if gp == nil || u.FieldCounter(gp) != 1 {
 		return
 	}
 
@@ -362,15 +364,6 @@ func (g *Gossiper) Monger(gp, initial *u.GossipPacket, addr net.UDPAddr) {
 
 		origin = tlc.Origin
 		id = tlc.ID
-		/*
-			if tlc.Confirmed >= 0 && tlc.Origin != g.Name {
-				g.PrintConfirmedGossip(origin, tx.Name,
-					hex.EncodeToString(tx.MetafileHash), int(id), int(tx.Size))
-			} else if tlc.Confirmed < 0 {
-				g.PrintUnconfirmedGossip(origin, tx.Name,
-					hex.EncodeToString(tx.MetafileHash), int(id), int(tx.Size))
-			}
-		*/
 	}
 
 	pendingACKStr := u.GetAckIdentifier(origin, addrStr, id)
@@ -423,11 +416,12 @@ func (g *Gossiper) HandleStatus(status u.StatusPacket, addr net.UDPAddr) {
 	// critical operations
 	for _, v := range status.Want {
 		// if origin no in want list, add it
+		g.WantListMutex.Lock()
 		if _, ok := g.WantList[v.Identifier]; !ok {
-			//g.WantListMutex.Lock()
 			g.WantList[v.Identifier] = uint32(1)
-			//g.WantListMutex.Unlock()
 		}
+		g.WantListMutex.Unlock()
+
 		// acknowledge rumor with ID lower than the ack we just recieved
 		for i := v.NextID; i > 0; i-- {
 			// we look for an ID lower than v.NextID
@@ -452,9 +446,9 @@ func (g *Gossiper) HandleStatus(status u.StatusPacket, addr net.UDPAddr) {
 	for _, v := range status.Want {
 		// if v.NextID is lower than the message we want, then we have stored
 		// the message that is wanted, so we send it to peer and return
-		//g.WantListMutex.Lock()
+		g.WantListMutex.Lock()
 		wantedID := g.WantList[v.Identifier]
-		//g.WantListMutex.Unlock()
+		g.WantListMutex.Unlock()
 		if v.NextID < wantedID {
 			// reference of the message to recover from history
 
@@ -473,8 +467,14 @@ func (g *Gossiper) HandleStatus(status u.StatusPacket, addr net.UDPAddr) {
 	// iterate over g's wantlist, and look for files that peer doesn't have,
 	// and send it, in the case where peer doesn't know a packet origin
 
-	//g.WantListMutex.Lock()
-	for k, v := range g.WantList {
+	g.WantListMutex.Lock()
+	wantlist := make(map[string]uint32)
+	for key, value := range g.WantList {
+		wantlist[key] = value
+	}
+	g.WantListMutex.Unlock()
+
+	for k, v := range wantlist {
 		if v > 1 {
 			found := false
 			// check if we can find the identifier in the status packet
@@ -500,14 +500,13 @@ func (g *Gossiper) HandleStatus(status u.StatusPacket, addr net.UDPAddr) {
 			}
 		}
 	}
-	//g.WantListMutex.Unlock()
 
 	// check if g is late on peer, and request messages if true
 	for _, v := range status.Want {
 		// if nextID > a message we want, request it
-		//g.WantListMutex.Lock()
+		g.WantListMutex.Lock()
 		wantedID := g.WantList[v.Identifier]
-		//g.WantListMutex.Unlock()
+		g.WantListMutex.Unlock()
 		if v.NextID > wantedID {
 			// send status to request it
 			g.SendStatus(&addr)

@@ -67,7 +67,7 @@ type Gossiper struct {
 	BlockStatuses   map[string]uint32 // vector clock of blocks origin -> ID
 	Round           uint32            // current round
 
-	BlockChans map[uint32]*chan u.TLCAck // tlc ack channels
+	BlockChans map[uint32][]*chan u.TLCAck // tlc ack channels
 	BlockRumor map[string]map[string]map[uint32]*chan bool
 	// addr -> origin -> ID -> chan
 
@@ -170,7 +170,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		statuses := make([]u.FileRequestStatus, 0)
 		fstatus := u.FileStatusList{List: statuses}
 	*/
-	bChans := make(map[uint32]*chan u.TLCAck)
+	bChans := make(map[uint32][]*chan u.TLCAck)
 
 	ownTLCBuffer := u.NewQueue(u.OwnTLCBufferSize)
 	outTLCBuffer := make(map[*u.TLCMessage]int)

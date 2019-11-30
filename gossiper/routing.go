@@ -9,8 +9,20 @@ import (
 
 // UpdateRoute updates the route to the given origin with the given nextHop for
 // the gossiper
-func (g *Gossiper) UpdateRoute(rumor u.RumorMessage, nextHop string) {
-	origin := rumor.Origin
+func (g *Gossiper) UpdateRoute(gp u.GossipPacket, nextHop string) {
+	var origin string
+	var id int
+
+	if gp.Rumor != nil {
+		origin = gp.Rumor.Origin
+		id = int(gp.Rumor.ID)
+	} else if gp.TLCMessage != nil {
+		origin = gp.TLCMessage.Origin
+		id = int(gp.TLCMessage.ID)
+	} else {
+		return
+	}
+
 	if origin == g.Name {
 		return
 	}
@@ -19,7 +31,7 @@ func (g *Gossiper) UpdateRoute(rumor u.RumorMessage, nextHop string) {
 	g.HistoryMutex.Lock()
 	l := len(g.PacketHistory[origin])
 	g.HistoryMutex.Unlock()
-	if int(rumor.ID) > l {
+	if id > l {
 		// load the current route (if any)
 		//v, ok := g.Routes.Load(origin)
 		// if the route exists and is different of the given one, update it
@@ -28,10 +40,10 @@ func (g *Gossiper) UpdateRoute(rumor u.RumorMessage, nextHop string) {
 		g.RouteMutex.Lock()
 		g.Routes[origin] = nextHop
 		g.RouteMutex.Unlock()
-		if rumor.Text != "" {
+
+		if (gp.Rumor != nil && gp.Rumor.Text != "") || gp.TLCMessage != nil {
 			g.PrintUpdateRoute(origin, nextHop)
 		}
-		//}
 	}
 }
 

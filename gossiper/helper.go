@@ -196,7 +196,9 @@ func (g *Gossiper) WriteGossipToHistory(gp u.GossipPacket) bool {
 
 	if int(id) <= l {
 		// filling missing slot
+		g.WantListMutex.Lock()
 		oldID, ok := g.WantList[origin]
+		g.WantListMutex.Unlock()
 		if !ok {
 			g.Printer.Println("Fatal: history write error, uncomplete wantlist")
 		}
@@ -210,12 +212,16 @@ func (g *Gossiper) WriteGossipToHistory(gp u.GossipPacket) bool {
 		g.HistoryMutex.Unlock()
 		// update nextID
 		oldID--
+		g.WantListMutex.Lock()
 		g.WantList[origin] = oldID
+		g.WantListMutex.Unlock()
 
 	} else if int(id) == l+1 {
 		// next gossip
 		// update wantlist
+		g.WantListMutex.Lock()
 		g.WantList[origin] = id + 1
+		g.WantListMutex.Unlock()
 	} else if int(id) > l+1 {
 		// out of order (early)
 
@@ -237,107 +243,6 @@ func (g *Gossiper) WriteGossipToHistory(gp u.GossipPacket) bool {
 
 	return true
 }
-
-/*
-// WriteRumorToHistory : write a given message to Gossiper message history
-// return false if message already known, true otherwise
-func (g *Gossiper) WriteRumorToHistory(rumor u.RumorMessage) bool {
-	origin := rumor.Origin
-	ID := rumor.ID
-	text := rumor.Text
-
-	// discard messages without origin or with message ID < 1
-	if origin == "" {
-		return false
-	}
-
-	if originHistory, ok := g.RumorHistory.Load(origin); !ok {
-		var empty []u.HistoryMessage
-		//g.HistoryMutex.Lock()
-		g.RumorHistory.Store(origin, empty)
-		//g.HistoryMutex.Unlock()
-
-		//g.WantListMutex.Lock()
-		g.WantList.Store(origin, uint32(1))
-		//g.WantListMutex.Unlock()
-	} else {
-		for _, v := range originHistory.([]u.HistoryMessage) {
-			if v.ID == ID {
-				// message already written to history
-				return false
-			}
-		}
-	}
-
-	// write message to history
-	//g.HistoryMutex.Lock()
-	oH, _ := g.RumorHistory.Load(origin)
-	//g.HistoryMutex.Unlock()
-	originHistory := oH.([]u.HistoryMessage)
-	//g.WantListMutex.Lock()
-	newID, _ := g.WantList.Load(origin)
-	//g.WantListMutex.Unlock()
-	if int(ID) < len(originHistory) { // packet received not in order
-		// more recent messages have been received, but message missing
-
-		// fill a missing slot
-		originHistory[ID-1] = u.HistoryMessage{ID: ID, Text: text}
-
-		found := false
-		for i, v := range originHistory {
-			// check for empty slots in message history to define the wantlist
-			if v.ID == 0 {
-				//g.WantListMutex.Lock()
-				g.WantList.Store(origin, uint32(i+1))
-				//g.WantListMutex.Unlock()
-				found = true
-				break
-			}
-		}
-		// if not, the last slot has been filled, set wantlist value to the end
-		// of the history (next value)
-		if !found {
-			//g.WantListMutex.Lock()
-			g.WantList.Store(origin, uint32(len(originHistory)+1))
-			//g.WantListMutex.Unlock()
-		}
-	} else if ID == newID {
-		// the next packet that g doesn't have
-		originHistory = append(originHistory,
-			u.HistoryMessage{ID: ID, Text: text})
-		//g.HistoryMutex.Lock()
-		g.RumorHistory.Store(origin, originHistory)
-		//g.HistoryMutex.Unlock()
-
-		// update the wantlist to the next message
-		//g.WantListMutex.Lock()
-		curr, _ := g.WantList.Load(origin)
-		g.WantList.Store(origin, uint32(curr.(uint32)+1))
-		//g.WantListMutex.Unlock()
-	} else { // not the wanted message, but a newer one
-		// e.g waiting for message 2, and get message 4
-		for i, _ := g.WantList.Load(origin); i.(uint32) < ID; i =
-			i.(uint32) + 1 {
-			// create empty slots for missing message
-			originHistory = append(originHistory,
-				u.HistoryMessage{ID: 0, Text: ""})
-		}
-		originHistory = append(originHistory,
-			u.HistoryMessage{ID: ID, Text: text})
-		//g.HistoryMutex.Lock()
-		g.RumorHistory.Store(origin, originHistory)
-		//g.HistoryMutex.Unlock()
-		// don't update the wantlist, as wanted message still missing
-	}
-
-	if rumor.Text != "" {
-		g.NewMessages.Mutex.Lock()
-		g.NewMessages.Messages = append(g.NewMessages.Messages, rumor)
-		g.NewMessages.Mutex.Unlock()
-	}
-	return true
-}
-*/
 
 // GetPeerID : returns the name of the peer
 func (g *Gossiper) GetPeerID() string {

@@ -120,10 +120,7 @@ func GetRealRand(n int) int {
 	//return GetRand(n)
 }
 
-// TestMessageType : test if the packet only contains a message type and prints
-// an error and returns false if it is not the case
-func TestMessageType(p *GossipPacket) bool {
-	// counter of pointers that are set in gossip packet
+func FieldCounter(p *GossipPacket) int {
 	n := 0
 	if p.Simple != nil {
 		n++
@@ -155,6 +152,14 @@ func TestMessageType(p *GossipPacket) bool {
 	if p.Ack != nil {
 		n++
 	}
+	return n
+}
+
+// TestMessageType : test if the packet only contains a message type and prints
+// an error and returns false if it is not the case
+func TestMessageType(p *GossipPacket) bool {
+	// counter of pointers that are set in gossip packet
+	n := FieldCounter(p)
 	if n > 1 {
 		fmt.Println("Error: the received GossipPacket contains multiple",
 			"messages")

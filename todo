@@ -4,3 +4,7 @@ TODO:
 - GUI
 - Part 2
 - TEEEEESTS
+
+- Careful with computing other hosts Round if some TLC are not confirmed
+- Investigate empty messages (search reply ???)
+- Skip round g

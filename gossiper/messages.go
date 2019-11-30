@@ -26,11 +26,9 @@ func (g *Gossiper) CreateRumorMessage(content string) u.RumorMessage {
 
 	g.WantListMutex.Lock()
 	id, ok := g.WantList[g.Name]
-	//g.WantListMutex.Unlock()
 	if !ok {
 		fmt.Println("Error: I don't know my name")
 	}
-	//g.WantListMutex.Lock()
 	g.WantList[g.Name] = id + 1
 	g.WantListMutex.Unlock()
 
@@ -54,7 +52,7 @@ func (g *Gossiper) CreatePrivateMessage(text, dst string) u.PrivateMessage {
 		ID:          u.PrivateMessageID,
 		Text:        text,
 		Destination: dst,
-		HopLimit:    u.DefaultHopLimit,
+		HopLimit:    g.AckHopLimit,
 	}
 }
 
@@ -302,12 +300,19 @@ func (g *Gossiper) SendTLC(tlc u.TLCMessage) {
 	gp := u.GossipPacket{TLCMessage: &tlc}
 	// write gossip to history
 	g.WriteGossipToHistory(gp)
+	if g.ShouldPrint(logHW3, 3) {
+		g.Printer.Println("Packet written to history")
+	}
+
 	// monger the tlc
 	peer := g.GetRandPeer()
 	if peer != nil {
-		g.Monger(&gp, &gp, *peer)
+		go g.Monger(&gp, &gp, *peer)
 	} else {
 		g.NoKnownPeer()
+	}
+	if g.ShouldPrint(logHW3, 3) {
+		g.Printer.Println("Send TLC done")
 	}
 
 }
