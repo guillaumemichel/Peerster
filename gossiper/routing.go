@@ -1,6 +1,9 @@
 package gossiper
 
 import (
+	"fmt"
+	"net"
+
 	u "github.com/guillaumemichel/Peerster/utils"
 )
 
@@ -30,4 +33,39 @@ func (g *Gossiper) UpdateRoute(rumor u.RumorMessage, nextHop string) {
 		}
 		//}
 	}
+}
+
+// RoutePacket routes private messages, data requests and replies to next hop
+func (g *Gossiper) RoutePacket(dst string, gp u.GossipPacket) {
+	// load the next hop to destination
+	g.RouteMutex.Lock()
+	v, ok := g.Routes[dst]
+	g.RouteMutex.Unlock()
+
+	if !ok {
+		g.Printer.Println("Searchreply:", gp.SearchReply)
+		g.Printer.Println("No route to", dst)
+		return
+	}
+
+	// resolve the udp address of the next hop
+	addr, err := net.ResolveUDPAddr("udp4", v)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if g.ShouldPrint(logHW3, 3) {
+		g.Printer.Println("Routing packet to", *addr)
+	}
+	g.SendPacketToNeighbor(*addr, gp)
+}
+
+// SendPacketToNeighbor send packet to known neighbor
+func (g *Gossiper) SendPacketToNeighbor(addr net.UDPAddr,
+	gp u.GossipPacket) {
+	// protobuf the packet
+	packet := u.ProtobufGossip(&gp)
+
+	// send the packet
+	g.GossipConn.WriteToUDP(packet, &addr)
 }

@@ -201,8 +201,8 @@ func (g *Gossiper) PrintConfirmedGossip(origin, filename, metahash string,
 	}
 }
 
-// PrintSendingAck message
-func (g *Gossiper) PrintSendingAck(origin string, id int) {
+// PrintSendingTLCAck message
+func (g *Gossiper) PrintSendingTLCAck(origin string, id int) {
 	if g.ShouldPrint(logHW3, 1) {
 		g.Printer.Printf("SENDING ACK origin %s ID %d\n", origin, id)
 	}
@@ -233,5 +233,12 @@ func (g *Gossiper) PrintFreshTLC(tlc u.TLCMessage) {
 		g.PrintUnconfirmedGossip(origin, tx.Name,
 			hex.EncodeToString(tx.MetafileHash), int(id), int(tx.Size))
 	}
+}
 
+// NoKnownPeer message
+func (g *Gossiper) NoKnownPeer() {
+	if g.ShouldPrint(logHW1, 1) || g.ShouldPrint(logHW2, 1) ||
+		g.ShouldPrint(logHW3, 1) {
+		g.Printer.Println("No known peer to send messages")
+	}
 }

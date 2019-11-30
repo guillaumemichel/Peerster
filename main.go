@@ -16,6 +16,8 @@ func main() {
 	f.CheckSharedDir()
 	f.CheckDownloadDir()
 
+	hoplim := int(u.DefaultHopLimit)
+
 	// flags of the peerster command
 	UIPort := flag.String("UIPort", u.DefaultUIPort, "port for the UI client")
 	gossipAddr := flag.String("gossipAddr", "127.0.0.1:5000",
@@ -43,6 +45,8 @@ func main() {
 	n := flag.Int("N", u.DefaultPeerNumber, "number of connected peers")
 	ackAll := flag.Bool("ackAll", true, "ack every message irrespective"+
 		" of its ID")
+	ackHopLimit := flag.Int("hopLimit", hoplim,
+		"hop limit for TLC ack messages")
 
 	flag.Parse()
 	// help message
@@ -54,5 +58,5 @@ func main() {
 	// start new gossiper
 	g.StartNewGossiper(gossipAddr, name, UIPort, GUIPort, peersInput,
 		*simple, *hw3ex2Flag, *hw3ex4Flag, *ackAll, *rtimer, *antiE,
-		*stubbornTimeout, *n, *loglvl)
+		*stubbornTimeout, *n, *ackHopLimit, *loglvl)
 }

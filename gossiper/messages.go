@@ -303,5 +303,11 @@ func (g *Gossiper) SendTLC(tlc u.TLCMessage) {
 	// write gossip to history
 	g.WriteGossipToHistory(gp)
 	// monger the tlc
-	g.Monger(&gp, &gp, *g.GetRandPeer())
+	peer := g.GetRandPeer()
+	if peer != nil {
+		g.Monger(&gp, &gp, *peer)
+	} else {
+		g.NoKnownPeer()
+	}
+
 }

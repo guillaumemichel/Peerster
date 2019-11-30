@@ -47,7 +47,7 @@ func (g *Gossiper) ManageTCL(filename string, size int64,
 
 	c := make(chan u.TLCAck)
 	// register channel
-	g.BlockChans[g.Round] = &c
+	g.BlockChans[id] = &c
 	timeoutChan := make(chan bool)
 
 	acks := make(map[string]bool)
@@ -56,6 +56,9 @@ func (g *Gossiper) ManageTCL(filename string, size int64,
 
 	// wait for a majority of acks
 	for len(acks) < majority {
+		if g.ShouldPrint(logHW3, 2) {
+			g.Printer.Println("Sending TLC")
+		}
 		g.SendTLC(tlc)
 		// timeout function
 		go func() {
@@ -69,11 +72,19 @@ func (g *Gossiper) ManageTCL(filename string, size int64,
 			select {
 			case ack := <-c:
 				acks[ack.Origin] = true
+				if len(acks) >= majority {
+					timeout = true
+				}
+				if g.ShouldPrint(logHW3, 2) {
+					g.Printer.Println("Got", len(acks), "acks, need", majority)
+				}
 			case <-timeoutChan:
 				timeout = true
 			}
 		}
 	}
+	// delete channel
+	delete(g.BlockChans, id)
 	// confirm tcl to all peers
 	tlc.Confirmed = int(id)
 
@@ -105,9 +116,31 @@ func (g *Gossiper) AckTLC(tlc u.TLCMessage) {
 		ID:          tlc.ID,
 		Text:        "",
 		Destination: tlc.Origin,
-		HopLimit:    u.DefaultHopLimit,
+		HopLimit:    g.AckHopLimit,
 	}
 	gp := u.GossipPacket{Ack: &ack}
+	g.PrintSendingTLCAck(tlc.Origin, int(tlc.ID))
 	// route packet to its destination
 	g.RoutePacket(tlc.Origin, gp)
+}
+
+// HandleTLCAcks HandleTLCAcks
+func (g *Gossiper) HandleTLCAcks(ack u.TLCAck) {
+	if ack.Destination == g.Name {
+		// ack for me
+		if g.ShouldPrint(logHW3, 2) {
+			g.Printer.Println("I got an ack")
+		}
+		if c, ok := g.BlockChans[ack.ID]; ok {
+			*c <- ack
+		}
+	} else {
+		// forward packet
+		ack.HopLimit--
+		// if positive forward it, otherwise drop it
+		if ack.HopLimit > 0 {
+			gp := u.GossipPacket{Ack: &ack}
+			g.RoutePacket(ack.Destination, gp)
+		}
+	}
 }

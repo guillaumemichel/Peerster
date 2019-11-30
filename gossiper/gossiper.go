@@ -73,13 +73,14 @@ type Gossiper struct {
 	PacketHistory map[string]map[uint32]u.GossipPacket // G0->3->packet
 	HistoryMutex  sync.Mutex
 
-	LogLvl string // log level of the peerster
+	LogLvl      string // log level of the peerster
+	AckHopLimit uint32
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
 func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
-	simple, hw3ex2, hw3ex4, ackAll bool, rtimer, antiE, stubbornTimeout, n int,
-	loglvl string) *Gossiper {
+	simple, hw3ex2, hw3ex4, ackAll bool, rtimer, antiE, stubbornTimeout, n,
+	ackHopLimit int, loglvl string) *Gossiper {
 
 	// define gossip address and connection for the new gossiper
 	gossAddr, err := net.ResolveUDPAddr("udp4", *address)
@@ -206,6 +207,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		PendingGossip:   pendGossip,
 		PacketHistory:   historyPacket,
 		HistoryMutex:    sync.Mutex{},
+		AckHopLimit:     uint32(ackHopLimit),
 	}
 }
 
@@ -292,8 +294,9 @@ func (g *Gossiper) Run() {
 // StartNewGossiper : Creates and starts a new gossiper
 func StartNewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	simple, hw3ex2, hw3ex4, ackAll bool, rtimer, antiE, stubbornTimeout,
-	n int, loglvl string) {
+	n, ackHopLimit int, loglvl string) {
 
 	NewGossiper(address, name, UIPort, GUIPort, peerList, simple, hw3ex2,
-		hw3ex4, ackAll, rtimer, antiE, stubbornTimeout, n, loglvl).Run()
+		hw3ex4, ackAll, rtimer, antiE, stubbornTimeout, n, ackHopLimit,
+		loglvl).Run()
 }

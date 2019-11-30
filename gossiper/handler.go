@@ -1,7 +1,6 @@
 package gossiper
 
 import (
-	"encoding/hex"
 	"fmt"
 	"net"
 	"time"
@@ -28,41 +27,6 @@ func (g *Gossiper) SendStatus(dst *net.UDPAddr) {
 	packet := u.ProtobufGossip(&gossip)
 
 	g.GossipConn.WriteToUDP(packet, dst)
-}
-
-// RoutePacket routes private messages, data requests and replies to next hop
-func (g *Gossiper) RoutePacket(dst string, gp u.GossipPacket) {
-	// load the next hop to destination
-	g.RouteMutex.Lock()
-	v, ok := g.Routes[dst]
-	g.RouteMutex.Unlock()
-
-	if !ok {
-		g.Printer.Println("Searchreply:", gp.SearchReply)
-		g.Printer.Println("No route to", dst)
-		return
-	}
-
-	// resolve the udp address of the next hop
-	addr, err := net.ResolveUDPAddr("udp4", v)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	if g.ShouldPrint(logHW3, 3) {
-		g.Printer.Println("Routing packet to", *addr)
-	}
-	g.SendPacketToNeighbor(*addr, gp)
-}
-
-// SendPacketToNeighbor send packet to known neighbor
-func (g *Gossiper) SendPacketToNeighbor(addr net.UDPAddr,
-	gp u.GossipPacket) {
-	// protobuf the packet
-	packet := u.ProtobufGossip(&gp)
-
-	// send the packet
-	g.GossipConn.WriteToUDP(packet, &addr)
 }
 
 // DealWithPrivateMessage deals with private messages
@@ -242,17 +206,23 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				// TLC message
 				if g.WriteGossipToHistory(*rcvMsg) {
 					// prints tlc message to console
+					if g.ShouldPrint(logHW3, 2) {
+						g.Printer.Println("New TLC")
+					}
 					g.PrintFreshTLC(*rcvMsg.TLCMessage)
 
 					// ack the message
 					g.SendStatus(udpAddr)
-					g.AckTLC(*rcvMsg.TLCMessage)
+					if rcvMsg.TLCMessage.Confirmed < 0 {
+						g.AckTLC(*rcvMsg.TLCMessage)
+					}
 					// monger to random peer
 					g.Monger(rcvMsg, rcvMsg, *g.GetRandPeer())
 				}
 
 			} else if rcvMsg.Ack != nil {
 				// TLC ack
+				g.HandleTLCAcks(*rcvMsg.Ack)
 
 			} else {
 				g.Printer.Println(
@@ -388,17 +358,19 @@ func (g *Gossiper) Monger(gp, initial *u.GossipPacket, addr net.UDPAddr) {
 
 	} else if gp.TLCMessage != nil {
 		tlc := gp.TLCMessage
-		tx := tlc.TxBlock.Transaction
+		//tx := tlc.TxBlock.Transaction
 
 		origin = tlc.Origin
 		id = tlc.ID
-		if tlc.Confirmed >= 0 && tlc.Origin != g.Name {
-			g.PrintConfirmedGossip(origin, tx.Name,
-				hex.EncodeToString(tx.MetafileHash), int(id), int(tx.Size))
-		} else if tlc.Confirmed < 0 {
-			g.PrintUnconfirmedGossip(origin, tx.Name,
-				hex.EncodeToString(tx.MetafileHash), int(id), int(tx.Size))
-		}
+		/*
+			if tlc.Confirmed >= 0 && tlc.Origin != g.Name {
+				g.PrintConfirmedGossip(origin, tx.Name,
+					hex.EncodeToString(tx.MetafileHash), int(id), int(tx.Size))
+			} else if tlc.Confirmed < 0 {
+				g.PrintUnconfirmedGossip(origin, tx.Name,
+					hex.EncodeToString(tx.MetafileHash), int(id), int(tx.Size))
+			}
+		*/
 	}
 
 	pendingACKStr := u.GetAckIdentifier(origin, addrStr, id)
