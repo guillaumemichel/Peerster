@@ -160,12 +160,18 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				// update the route if message not already received
 				g.UpdateRoute(*rumor, addrStr)
 
+				// ack the message
+				g.SendStatus(udpAddr)
+
 				if g.WriteGossipToHistory(*rcvMsg) {
 					// prints message to console
 					g.PrintRumorMessage(*rumor, addrStr)
 
-					// ack the message
-					g.SendStatus(udpAddr)
+					// verify if we should send a TLC confirmation
+					if g.Hw3ex3 {
+						g.VerifyConfirmTLC()
+					}
+
 					// monger to random peer
 					g.Monger(rcvMsg, rcvMsg, *g.GetRandPeer())
 				}
@@ -204,21 +210,15 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 
 			} else if rcvMsg.TLCMessage != nil {
 				// TLC message
-				if g.WriteGossipToHistory(*rcvMsg) {
-					// prints tlc message to console
-					if g.ShouldPrint(logHW3, 2) {
-						g.Printer.Println("New TLC")
-					}
-					g.PrintFreshTLC(*rcvMsg.TLCMessage)
 
-					// ack the message
-					g.SendStatus(udpAddr)
-					if rcvMsg.TLCMessage.Confirmed < 0 {
-						g.AckTLC(*rcvMsg.TLCMessage)
-					}
-					// monger to random peer
-					g.Monger(rcvMsg, rcvMsg, *g.GetRandPeer())
+				// send status to neighbor
+				g.SendStatus(udpAddr)
+				// verify if we should send tlc ack for previous tlc
+				if g.Hw3ex3 {
+					g.VerifyConfirmTLC()
 				}
+				// handle tlc
+				g.HandleTLCMessage(*rcvMsg)
 
 			} else if rcvMsg.Ack != nil {
 				// TLC ack

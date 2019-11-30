@@ -41,6 +41,8 @@ func main() {
 		"debug flags that correspond to HW1-2-3")
 	hw3ex2Flag := flag.Bool("hw3ex2", false, "set to true to publish blocks"+
 		" when indexing files")
+	hw3ex3Flag := flag.Bool("hw3ex3", false, "set to true to enable TLC"+
+		" rounds")
 	hw3ex4Flag := flag.Bool("hw3ex4", false, "set to true enable QSC")
 	n := flag.Int("N", u.DefaultPeerNumber, "number of connected peers")
 	ackAll := flag.Bool("ackAll", true, "ack every message irrespective"+
@@ -57,6 +59,6 @@ func main() {
 
 	// start new gossiper
 	g.StartNewGossiper(gossipAddr, name, UIPort, GUIPort, peersInput,
-		*simple, *hw3ex2Flag, *hw3ex4Flag, *ackAll, *rtimer, *antiE,
-		*stubbornTimeout, *n, *ackHopLimit, *loglvl)
+		*simple, *hw3ex2Flag, *hw3ex3Flag, *hw3ex4Flag, *ackAll, *rtimer,
+		*antiE, *stubbornTimeout, *n, *ackHopLimit, *loglvl)
 }

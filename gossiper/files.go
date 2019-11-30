@@ -360,13 +360,8 @@ func (g *Gossiper) IndexFile(filename string) {
 		}
 	}
 	// manage TLC
-	if g.Hw3ex2 {
-		if !g.ManageTCL(filename, fstruct.Size, fstruct.MetafileHash) {
-			if g.ShouldPrint(logHW3, 2) {
-				g.Printer.Println("Name probably already taken, index failed")
-			}
-			return
-		}
+	if g.Hw3ex2 || g.Hw3ex3 {
+		g.ManageTLC(filename, fstruct.Size, fstruct.MetafileHash)
 	}
 	// once it is confirmed, continue
 	// may take some time to get acks

@@ -242,3 +242,16 @@ func (g *Gossiper) NoKnownPeer() {
 		g.Printer.Println("No known peer to send messages")
 	}
 }
+
+// PrintAdvancingToRound message
+func (g *Gossiper) PrintAdvancingToRound(myTime int, confirmed []u.PeerStatus) {
+	if g.ShouldPrint(logHW3, 1) {
+		str := "ADVANCING TO round " + strconv.Itoa(myTime) +
+			" BASED ON CONFIRMED MESSAGES"
+		for i, c := range confirmed {
+			str += " origin" + strconv.Itoa(i+1) + " " + c.Identifier + " ID" +
+				strconv.Itoa(i+1) + " " + strconv.Itoa(int(c.NextID)) + ","
+		}
+		g.Printer.Println(str[:len(str)-1])
+	}
+}

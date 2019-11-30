@@ -56,10 +56,12 @@ type Gossiper struct {
 	SearchChans   map[*[]string]chan u.SearchReply
 	SearchResults []u.SearchFile
 
-	Hw3ex2 bool // hw3ex2 mode on or off
-	Hw3ex4 bool // hw3ex4 mode on or off
-	N      int  // number of connected peers
-	AckAll bool // ack every message irrespective of ID
+	Hw3ex2   bool // hw3ex2 mode on or off
+	Hw3ex3   bool // hw3ex3 mode on or off
+	Hw3ex4   bool // hw3ex4 mode on or off
+	N        int  // number of connected peers
+	Majority int  // majority of peers (N)
+	AckAll   bool // ack every message irrespective of ID
 
 	StubbornTimeout time.Duration     // stubborn timeout
 	BlockStatuses   map[string]uint32 // vector clock of blocks origin -> ID
@@ -75,12 +77,20 @@ type Gossiper struct {
 
 	LogLvl      string // log level of the peerster
 	AckHopLimit uint32
+
+	TLCRounds       map[string]int
+	ConfirmedTLC    map[string]map[int]u.TLCMessage
+	OwnTLCBuffer    *u.Queue
+	OutTLCBuffer    map[*u.TLCMessage]int // tlc -> its round origin
+	TLCAcksPerRound map[int]int           // round -> nb of acks
+	TLCReady        bool
+	TLCWaitChan     map[*u.TxPublish]chan bool
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
 func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
-	simple, hw3ex2, hw3ex4, ackAll bool, rtimer, antiE, stubbornTimeout, n,
-	ackHopLimit int, loglvl string) *Gossiper {
+	simple, hw3ex2, hw3ex3, hw3ex4, ackAll bool, rtimer, antiE, stubbornTimeout,
+	n, ackHopLimit int, loglvl string) *Gossiper {
 
 	// define gossip address and connection for the new gossiper
 	gossAddr, err := net.ResolveUDPAddr("udp4", *address)
@@ -110,6 +120,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	PanicCheck(err)
 
 	peers := *u.ParsePeers(peerList)
+	majority := n/2 + 1 // more than 50%
 
 	// remove the gossipAddr of g if it is in the host list
 	for i, p := range peers {
@@ -129,6 +140,12 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	} else {
 		mode = u.RumorModeStr
 	}
+
+	confirmedTLC := make(map[string]map[int]u.TLCMessage)
+	confirmedTLC[*name] = make(map[int]u.TLCMessage)
+
+	tlcAcksPerRound := make(map[int]int)
+	tlcAcksPerRound[0] = 0
 	//var acks sync.Map
 	status := make(map[string]uint32)
 	routes := make(map[string]string)
@@ -141,6 +158,10 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	*/
 	pendGossip := make(map[string]u.AckValues)
 	historyPacket := make(map[string]map[uint32]u.GossipPacket)
+	tlcRounds := make(map[string]int)
+	tlcRounds[*name] = 0
+
+	tlcWaitChan := make(map[*u.TxPublish]chan bool)
 
 	fstructs := make([]u.FileStruct, 0)
 	schan := make(map[*[]string]chan u.SearchReply)
@@ -150,6 +171,9 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		fstatus := u.FileStatusList{List: statuses}
 	*/
 	bChans := make(map[uint32]*chan u.TLCAck)
+
+	ownTLCBuffer := u.NewQueue(u.OwnTLCBufferSize)
+	outTLCBuffer := make(map[*u.TLCMessage]int)
 
 	var newMessages []u.RumorMessage
 	nm := u.SyncNewMessages{Messages: newMessages}
@@ -196,8 +220,10 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		SearchChans:     schan,
 		StubbornTimeout: sto,
 		Hw3ex2:          hw3ex2,
+		Hw3ex3:          hw3ex3,
 		Hw3ex4:          hw3ex4,
 		N:               n,
+		Majority:        majority,
 		AckAll:          ackAll,
 		BlockStatuses:   bStatuses,
 		Round:           0,
@@ -208,6 +234,13 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		PacketHistory:   historyPacket,
 		HistoryMutex:    sync.Mutex{},
 		AckHopLimit:     uint32(ackHopLimit),
+		TLCRounds:       tlcRounds,
+		OwnTLCBuffer:    ownTLCBuffer,
+		OutTLCBuffer:    outTLCBuffer,
+		TLCAcksPerRound: tlcAcksPerRound,
+		TLCReady:        true,
+		ConfirmedTLC:    confirmedTLC,
+		TLCWaitChan:     tlcWaitChan,
 	}
 }
 
@@ -293,10 +326,10 @@ func (g *Gossiper) Run() {
 
 // StartNewGossiper : Creates and starts a new gossiper
 func StartNewGossiper(address, name, UIPort, GUIPort, peerList *string,
-	simple, hw3ex2, hw3ex4, ackAll bool, rtimer, antiE, stubbornTimeout,
+	simple, hw3ex2, hw3ex3, hw3ex4, ackAll bool, rtimer, antiE, stubbornTimeout,
 	n, ackHopLimit int, loglvl string) {
 
 	NewGossiper(address, name, UIPort, GUIPort, peerList, simple, hw3ex2,
-		hw3ex4, ackAll, rtimer, antiE, stubbornTimeout, n, ackHopLimit,
+		hw3ex3, hw3ex4, ackAll, rtimer, antiE, stubbornTimeout, n, ackHopLimit,
 		loglvl).Run()
 }

@@ -91,4 +91,9 @@ const (
 
 	// UnconfirmedInt value for TLCMessage confirmed
 	UnconfirmedInt int = -1
+
+	// OwnTLCBufferSize OwnTLCBufferSize
+	OwnTLCBufferSize int = 50
+	// OutsideTLCBufferSize OutsideTLCBufferSize
+	OutsideTLCBufferSize int = 200
 )
