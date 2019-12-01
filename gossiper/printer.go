@@ -244,14 +244,31 @@ func (g *Gossiper) NoKnownPeer() {
 }
 
 // PrintAdvancingToRound message
-func (g *Gossiper) PrintAdvancingToRound(myTime int, confirmed []u.PeerStatus) {
+func (g *Gossiper) PrintAdvancingToRound(myTime int, confirmed []u.TLCMessage) {
 	if g.ShouldPrint(logHW3, 1) {
 		str := "ADVANCING TO round " + strconv.Itoa(myTime) +
 			" BASED ON CONFIRMED MESSAGES"
 		for i, c := range confirmed {
-			str += " origin" + strconv.Itoa(i+1) + " " + c.Identifier + " ID" +
-				strconv.Itoa(i+1) + " " + strconv.Itoa(int(c.NextID)) + ","
+			str += " origin" + strconv.Itoa(i+1) + " " + c.Origin + " ID" +
+				strconv.Itoa(i+1) + " " + strconv.Itoa(int(c.ID)) + ","
 		}
 		g.Printer.Println(str[:len(str)-1])
+	}
+}
+
+// PrintConcensus message
+func (g *Gossiper) PrintConcensus(tlc u.TLCMessage, round int, files []string) {
+	if g.ShouldPrint(logHW3, 1) {
+		str := "CONSENSUS ON QSC round " + strconv.Itoa(round) +
+			" message origin " + tlc.Origin + " ID " +
+			strconv.Itoa(int(tlc.ID)) + " file names "
+		for _, name := range files {
+			str += name + " "
+		}
+		str += "size " + strconv.Itoa(int(tlc.TxBlock.Transaction.Size)) +
+			" metahash " +
+			hex.EncodeToString(tlc.TxBlock.Transaction.MetafileHash)
+		g.Printer.Println(str)
+
 	}
 }

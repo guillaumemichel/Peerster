@@ -120,6 +120,7 @@ func GetRealRand(n int) int {
 	//return GetRand(n)
 }
 
+// FieldCounter count the number of fields in a GossipPacket
 func FieldCounter(p *GossipPacket) int {
 	n := 0
 	if p.Simple != nil {

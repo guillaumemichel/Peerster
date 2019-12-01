@@ -1,6 +1,7 @@
 package gossiper
 
 import (
+	"math/rand"
 	"time"
 
 	u "github.com/guillaumemichel/Peerster/utils"
@@ -15,6 +16,22 @@ func (g *Gossiper) ManageTLC(filename string, size int64,
 		Name:         filename,
 		Size:         size,
 		MetafileHash: metafilehash[:],
+	}
+
+	var hash u.ShaHash
+	if g.GotConsensus {
+		// take last block of committed history
+		hash = g.CommittedHistory.Start.Hash
+	} else {
+		// build on best block of stage s+1
+		hash = g.SelectedTLC.TxBlock.Hash()
+	}
+
+	// create the block to publish
+	bp := u.BlockPublish{
+		// zeros if history not filled
+		PrevHash:    hash,
+		Transaction: tx,
 	}
 
 	// if Hw3ex2 skip this
@@ -37,10 +54,6 @@ func (g *Gossiper) ManageTLC(filename string, size int64,
 			// kick current search
 			if g.TLCAcksPerRound[g.TLCRounds[g.Name]] >= g.Majority {
 				if len(g.BlockChans) == 1 {
-					if g.ShouldPrint(logHW3, 2) {
-						g.Printer.Println("len(BlockChans)==1")
-					}
-
 					for _, v := range g.BlockChans {
 						if g.ShouldPrint(logHW3, 2) {
 							g.Printer.Println("Sending abort signal to " +
@@ -62,23 +75,13 @@ func (g *Gossiper) ManageTLC(filename string, size int64,
 			}
 		}
 	}
-	g.BuildAndSendTLC(tx)
+	g.BuildAndSendTLC(bp, nil, u.UnconfirmedInt)
 
 }
 
 // BuildAndSendTLC BuildAndSendTLC
-func (g *Gossiper) BuildAndSendTLC(tx u.TxPublish) {
-	// create an empty hash
-	var zeroes u.ShaHash
-	for i := range zeroes[:] {
-		zeroes[i] = 0
-	}
-
-	// create the block to publish
-	bp := u.BlockPublish{
-		PrevHash:    zeroes,
-		Transaction: tx,
-	}
+func (g *Gossiper) BuildAndSendTLC(bp u.BlockPublish, fit *float32,
+	confirmed int) {
 
 	g.WantListMutex.Lock()
 	id := g.WantList[g.Name]
@@ -93,14 +96,23 @@ func (g *Gossiper) BuildAndSendTLC(tx u.TxPublish) {
 		sp = nil
 	}
 
+	if fit == nil {
+		var n float32
+		if g.Hw3ex4 {
+			// if ex4, get random fitness value
+			n = rand.Float32()
+		}
+		fit = &n
+	}
+
 	// Create the TLC message
 	tlc := u.TLCMessage{
 		Origin:      g.Name,
 		ID:          id,
-		Confirmed:   u.UnconfirmedInt,
+		Confirmed:   confirmed,
 		TxBlock:     bp,
 		VectorClock: sp,
-		Fitness:     0,
+		Fitness:     *fit,
 	}
 
 	cAck := make(chan u.TLCAck)
@@ -209,31 +221,122 @@ func (g *Gossiper) CheckChangeRound() {
 	// if I have a majority of confirmed messages from this round
 	// if I have already sent a message at this round
 	if count >= g.Majority && !g.TLCReady {
-		// I can progress to next round
-		g.TLCReady = true
 		// mytime++
 		g.TLCRounds[g.Name]++
 
 		// prepare print
-		confirmed := make([]u.PeerStatus, count)
+		confirmed := make([]u.TLCMessage, count)
 		i := 0
-		for k, v := range g.ConfirmedTLC {
+		for _, v := range g.ConfirmedTLC {
 			if tlc, ok := v[round]; ok {
-				confirmed[i] = u.PeerStatus{Identifier: k, NextID: tlc.ID}
+				confirmed[i] = tlc
 				i++
 			}
+		}
+		if g.Hw3ex4 {
+			if g.QSCStage != 2 {
+				// get message with highest fitness
+				var selected u.TLCMessage
+				var max float32 = -1.0
+				for _, v := range confirmed {
+					if v.Fitness > max {
+						max = v.Fitness
+						selected = v
+					}
+				}
+				// s -> s+1 or s+1 -> s+2
+				g.QSCStage++
+
+				g.SelectedTLC = selected
+
+				// print message
+				g.PrintAdvancingToRound(round+1, confirmed)
+
+				// send TLC confirming message with highest fitness
+				g.BuildAndSendTLC(selected.TxBlock, &selected.Fitness,
+					selected.Confirmed)
+				return
+			}
+
+			// select message (concensus)
+			agree := make(map[string]bool)
+			// set of origin that agree upon g.SelectedTLC
+			selectedHash := g.SelectedTLC.TxBlock.Hash()
+			for _, v := range g.ConfirmedTLC {
+				for i := 0; i < 2; i++ {
+					// check how many nodes share this confirmed message in the
+					// last 2 rounds
+					if tlc, ok := v[round-i]; ok {
+						if tlc.TxBlock.Hash() == selectedHash {
+							agree[tlc.Origin] = true
+						}
+					}
+				}
+			}
+			// consensus
+			if len(agree) >= g.Majority {
+
+				currBlock := g.SelectedTLC.TxBlock
+				// iterate in reverse order to write to committed history
+				blockList := []u.BlockPublish{currBlock}
+				// while the block do not refer to the last one of history
+				security := 0
+				for currBlock.PrevHash != g.CommittedHistory.Tail.Hash &&
+					security < u.SecurityLimit {
+					p, ok := g.HashToBlock[currBlock.PrevHash]
+					if !ok {
+						g.Printer.Println("Fatal error: didn't found block I" +
+							"have to write to history")
+						break
+					}
+					currBlock = *p
+					// append block to list to write
+					blockList = append(blockList, currBlock)
+					security++
+				}
+
+				// write all blocks to committed history in reverse order
+				for i := len(blockList) - 1; i >= 0; i-- {
+					// write block to committed history
+					newBlock := u.Node{
+						Block: blockList[i],
+						Hash:  blockList[i].Hash(),
+					}
+					g.CommittedHistory.InsertNode(&newBlock)
+				}
+
+				g.GotConsensus = true
+
+				// print concensus message
+				g.PrintConcensus(g.SelectedTLC, round,
+					g.CommittedHistory.Filenames)
+			} else {
+				g.GotConsensus = false
+			}
+			// s+2 -> s next QSC round
+			g.QSCStage = 0
+
 		}
 		// print message
 		g.PrintAdvancingToRound(round+1, confirmed)
 
-		// send next request in the queue
-		tlc := g.OwnTLCBuffer.Pop()
-		if tlc != nil {
-			// tell the guy stuck in ManageTLC to continue
-			g.TLCWaitChan[tlc] <- true
-		}
+		g.NextTLC()
+
 	}
 
+}
+
+// NextTLC send next TLC message from the queue if any
+func (g *Gossiper) NextTLC() {
+	// I can progress to next round
+	g.TLCReady = true
+
+	// send next request in the queue
+	tlc := g.OwnTLCBuffer.Pop()
+	if tlc != nil {
+		// tell the guy stuck in ManageTLC to continue
+		g.TLCWaitChan[tlc] <- true
+	}
 }
 
 // CheckTLCStatus CheckTLCStatus
@@ -262,6 +365,9 @@ func (g *Gossiper) HandleTLCMessage(gp u.GossipPacket) {
 		if g.Hw3ex3 {
 			if tlc.Confirmed > 0 && tlc.Origin != g.Name {
 				//confirmed message, increase the counter
+
+				// to be able to recover a block from its hash
+				g.HashToBlock[tlc.TxBlock.Hash()] = &tlc.TxBlock
 
 				round, ok := g.TLCRounds[tlc.Origin]
 				// if no message for origin create entry
@@ -357,7 +463,7 @@ func (g *Gossiper) VerifyConfirmTLC() {
 
 // AckTLC acks a TLC message
 func (g *Gossiper) AckTLC(tlc u.TLCMessage) {
-	if g.Hw3ex3 && g.AckAll {
+	if g.Hw3ex3 && !g.AckAll {
 		// don't acknowledge message from the past
 		if g.TLCRounds[tlc.Origin] < g.TLCRounds[g.Name] {
 			return
@@ -367,6 +473,32 @@ func (g *Gossiper) AckTLC(tlc u.TLCMessage) {
 		if !g.CheckTLCStatus(tlc.VectorClock.Want) {
 			// add it to the queue
 			g.OutTLCBuffer[&tlc] = g.TLCRounds[tlc.Origin]
+			return
+		}
+
+	}
+	if g.Hw3ex4 {
+		for _, name := range g.CommittedHistory.Filenames {
+			if tlc.TxBlock.Transaction.Name == name {
+				// name already registered, don't ack
+				return
+			}
+		}
+		currBlock := tlc.TxBlock
+		security := 0
+		for currBlock.Hash() != g.CommittedHistory.Tail.Hash &&
+			security < u.SecurityLimit {
+			p, ok := g.HashToBlock[currBlock.PrevHash]
+			// hash not known
+			if !ok {
+				// don't ack that shit
+				return
+			}
+			currBlock = *p
+			security++
+		}
+		if security == u.SecurityLimit {
+			// may be a loop or too long chain
 			return
 		}
 

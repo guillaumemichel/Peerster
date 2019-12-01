@@ -42,3 +42,33 @@ func (q *Queue) Pop() *TxPublish {
 	q.count--
 	return node
 }
+
+// Node of double linked list
+type Node struct {
+	Block BlockPublish
+	Hash  ShaHash
+	Prev  *Node
+	Next  *Node
+}
+
+// List double linked list structure
+type List struct {
+	Size      int
+	Tail      *Node
+	Start     *Node
+	Filenames []string
+}
+
+// InsertNode to double linked list
+func (l *List) InsertNode(newNode *Node) {
+	if l.Start == nil {
+		l.Start = newNode
+		l.Tail = newNode
+	} else {
+		l.Tail.Next = newNode
+		newNode.Prev = l.Tail
+		l.Tail = newNode
+		l.Filenames = append(l.Filenames, newNode.Block.Transaction.Name)
+	}
+	l.Size++
+}

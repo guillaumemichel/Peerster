@@ -85,6 +85,12 @@ type Gossiper struct {
 	TLCAcksPerRound map[int]int           // round -> nb of acks
 	TLCReady        bool
 	TLCWaitChan     map[*u.TxPublish]chan bool
+
+	CommittedHistory *u.List
+	QSCStage         int // s, s+1 or s+2 (0, 1, 2)
+	SelectedTLC      u.TLCMessage
+	GotConsensus     bool
+	HashToBlock      map[u.ShaHash]*u.BlockPublish
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
@@ -190,6 +196,19 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 	status[*name] = uint32(1)
 	printer := log.New(os.Stdout, "", 0)
 
+	// blockchain committed history
+	var zeroes u.ShaHash
+	for i := range zeroes[:] {
+		zeroes[i] = 0
+	}
+	genBlock := u.BlockPublish{}
+	genesis := u.Node{Prev: nil, Next: nil, Hash: zeroes, Block: genBlock}
+
+	commitedHistory := u.List{Size: 0}
+	commitedHistory.InsertNode(&genesis)
+
+	hToBlock := make(map[u.ShaHash]*u.BlockPublish)
+
 	return &Gossiper{
 		Name:       *name,
 		GossipAddr: gossAddr,
@@ -200,47 +219,51 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		//PeerMutex:     &sync.Mutex{},
 		Mode: mode,
 		//PendingACKs: &acks,
-		ACKMutex:        &sync.Mutex{},
-		WantList:        status,
-		WantListMutex:   &sync.Mutex{},
-		AntiEntropy:     antiE,
-		NewMessages:     &nm,
-		GUIPort:         guiPort,
-		Routes:          routes,
-		RouteMutex:      &sync.Mutex{},
-		RTimer:          rtimer,
-		PrivateMsg:      pm,
-		Printer:         printer,
-		FileStructs:     fstructs,
-		FileStatus:      fstatus,
-		Chunks:          chunks,
-		ChunkLock:       &sync.Mutex{},
-		SearchStatuses:  searchs,
-		SearchMutex:     &sync.Mutex{},
-		SearchChans:     schan,
-		StubbornTimeout: sto,
-		Hw3ex2:          hw3ex2,
-		Hw3ex3:          hw3ex3,
-		Hw3ex4:          hw3ex4,
-		N:               n,
-		Majority:        majority,
-		AckAll:          ackAll,
-		BlockStatuses:   bStatuses,
-		Round:           0,
-		BlockChans:      bChans,
-		BlockRumor:      brum,
-		LogLvl:          loglvl,
-		PendingGossip:   pendGossip,
-		PacketHistory:   historyPacket,
-		HistoryMutex:    sync.Mutex{},
-		AckHopLimit:     uint32(ackHopLimit),
-		TLCRounds:       tlcRounds,
-		OwnTLCBuffer:    ownTLCBuffer,
-		OutTLCBuffer:    outTLCBuffer,
-		TLCAcksPerRound: tlcAcksPerRound,
-		TLCReady:        true,
-		ConfirmedTLC:    confirmedTLC,
-		TLCWaitChan:     tlcWaitChan,
+		ACKMutex:         &sync.Mutex{},
+		WantList:         status,
+		WantListMutex:    &sync.Mutex{},
+		AntiEntropy:      antiE,
+		NewMessages:      &nm,
+		GUIPort:          guiPort,
+		Routes:           routes,
+		RouteMutex:       &sync.Mutex{},
+		RTimer:           rtimer,
+		PrivateMsg:       pm,
+		Printer:          printer,
+		FileStructs:      fstructs,
+		FileStatus:       fstatus,
+		Chunks:           chunks,
+		ChunkLock:        &sync.Mutex{},
+		SearchStatuses:   searchs,
+		SearchMutex:      &sync.Mutex{},
+		SearchChans:      schan,
+		StubbornTimeout:  sto,
+		Hw3ex2:           hw3ex2,
+		Hw3ex3:           hw3ex3,
+		Hw3ex4:           hw3ex4,
+		N:                n,
+		Majority:         majority,
+		AckAll:           ackAll,
+		BlockStatuses:    bStatuses,
+		Round:            0,
+		BlockChans:       bChans,
+		BlockRumor:       brum,
+		LogLvl:           loglvl,
+		PendingGossip:    pendGossip,
+		PacketHistory:    historyPacket,
+		HistoryMutex:     sync.Mutex{},
+		AckHopLimit:      uint32(ackHopLimit),
+		TLCRounds:        tlcRounds,
+		OwnTLCBuffer:     ownTLCBuffer,
+		OutTLCBuffer:     outTLCBuffer,
+		TLCAcksPerRound:  tlcAcksPerRound,
+		TLCReady:         true,
+		ConfirmedTLC:     confirmedTLC,
+		TLCWaitChan:      tlcWaitChan,
+		CommittedHistory: &commitedHistory,
+		QSCStage:         0,
+		GotConsensus:     true,
+		HashToBlock:      hToBlock,
 	}
 }
 

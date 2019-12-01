@@ -96,4 +96,7 @@ const (
 	OwnTLCBufferSize int = 50
 	// OutsideTLCBufferSize OutsideTLCBufferSize
 	OutsideTLCBufferSize int = 200
+
+	// SecurityLimit for iterating on blocks and hashs
+	SecurityLimit int = 100
 )
