@@ -311,7 +311,7 @@ func (g *Gossiper) SendTLC(tlc u.TLCMessage) {
 	} else {
 		g.NoKnownPeer()
 	}
-	if g.ShouldPrint(logHW3, 3) {
+	if g.ShouldPrint(logHW3, 2) {
 		g.Printer.Println("Send TLC done")
 	}
 

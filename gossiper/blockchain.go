@@ -1,6 +1,8 @@
 package gossiper
 
 import (
+	"encoding/hex"
+	"math"
 	"math/rand"
 	"time"
 
@@ -9,7 +11,7 @@ import (
 
 // ManageTLC sends TLCmessages and wait for acks
 func (g *Gossiper) ManageTLC(filename string, size int64,
-	metafilehash u.ShaHash) {
+	metafilehash u.ShaHash) bool {
 
 	// Create the Tx block
 	tx := u.TxPublish{
@@ -35,7 +37,8 @@ func (g *Gossiper) ManageTLC(filename string, size int64,
 	}
 
 	// if Hw3ex2 skip this
-	if g.Hw3ex3 {
+	if g.Hw3ex3 || g.Hw3ex4 {
+
 		// handles everything
 		if g.TLCReady {
 			// no message has been sent yet at this round
@@ -75,13 +78,28 @@ func (g *Gossiper) ManageTLC(filename string, size int64,
 			}
 		}
 	}
-	g.BuildAndSendTLC(bp, nil, u.UnconfirmedInt)
-
+	return g.BuildAndSendTLC(bp, nil, u.UnconfirmedInt)
 }
 
 // BuildAndSendTLC BuildAndSendTLC
 func (g *Gossiper) BuildAndSendTLC(bp u.BlockPublish, fit *float32,
-	confirmed int) {
+	confirmed int) bool {
+
+	if confirmed < 0 && g.Hw3ex4 {
+		// check if name already in blockchain
+		node := g.CommittedHistory.Start
+		for node.Next != nil {
+			if node.Block.Transaction.Name == bp.Transaction.Name {
+				// don't index a file if name already in blockchain
+				if g.ShouldPrint(logHW3, 1) {
+					g.Printer.Println("Name already taken, aborting " +
+						"indexing")
+				}
+				return false
+			}
+			node = node.Next
+		}
+	}
 
 	g.WantListMutex.Lock()
 	id := g.WantList[g.Name]
@@ -89,7 +107,7 @@ func (g *Gossiper) BuildAndSendTLC(bp u.BlockPublish, fit *float32,
 	g.WantListMutex.Unlock()
 
 	var sp *u.StatusPacket
-	if g.Hw3ex3 {
+	if g.Hw3ex3 || g.Hw3ex4 {
 		status := g.BuildStatusPacket()
 		sp = &status
 	} else {
@@ -99,6 +117,7 @@ func (g *Gossiper) BuildAndSendTLC(bp u.BlockPublish, fit *float32,
 	if fit == nil {
 		var n float32
 		if g.Hw3ex4 {
+			rand.Seed(int64(u.GetRealRand(math.MaxInt32)))
 			// if ex4, get random fitness value
 			n = rand.Float32()
 		}
@@ -115,101 +134,134 @@ func (g *Gossiper) BuildAndSendTLC(bp u.BlockPublish, fit *float32,
 		Fitness:     *fit,
 	}
 
-	cAck := make(chan u.TLCAck)
-	cAbort := make(chan u.TLCAck)
+	if confirmed < 0 {
+		broadcast := true
 
-	// register channel
-	g.BlockChans[id] = make([]*chan u.TLCAck, 2)
-	g.BlockChans[id][0] = &cAck
-	g.BlockChans[id][1] = &cAbort
-	timeoutChan := make(chan bool)
+		cAck := make(chan u.TLCAck)
+		cAbort := make(chan u.TLCAck)
 
-	acks := make(map[string]bool)
-	acks[g.Name] = true
+		// register channel
+		g.BlockChans[id] = make([]*chan u.TLCAck, 2)
+		g.BlockChans[id][0] = &cAck
+		g.BlockChans[id][1] = &cAbort
+		timeoutChan := make(chan bool)
 
-	broadcast := true
+		acks := make(map[string]bool)
+		acks[g.Name] = true
 
-	// wait for a majority of acks
-	for len(acks) < g.Majority && broadcast {
-		if g.ShouldPrint(logHW3, 3) {
-			g.Printer.Println("Sending TLC")
-		}
-		g.SendTLC(tlc)
-		// timeout function
-		go func() {
-			// wait for timeout
-			time.Sleep(g.StubbornTimeout)
-			timeoutChan <- true
-		}()
-		// collect all acks
-		timeout := false
-		for !timeout {
+		// wait for a majority of acks
+		for len(acks) < g.Majority && broadcast {
 			if g.ShouldPrint(logHW3, 3) {
-				g.Printer.Println("No Timeout")
+				g.Printer.Println("Sending TLC")
 			}
-			select {
-			case ack := <-cAck:
-				acks[ack.Origin] = true
-				if len(acks) >= g.Majority {
+			g.SendTLC(tlc)
+			// timeout function
+			go func() {
+				// wait for timeout
+				time.Sleep(g.StubbornTimeout)
+				timeoutChan <- true
+			}()
+			// collect all acks
+			timeout := false
+			for !timeout {
+				if g.ShouldPrint(logHW3, 3) {
+					g.Printer.Println("No Timeout")
+				}
+				select {
+				case ack := <-cAck:
+					acks[ack.Origin] = true
+					if len(acks) >= g.Majority {
+						timeout = true
+					}
+					if g.ShouldPrint(logHW3, 2) {
+						g.Printer.Println("Got", len(acks), "acks, need",
+							g.Majority)
+					}
+				case <-cAbort:
+					if g.ShouldPrint(logHW3, 3) {
+						g.Printer.Println("Aborting TLC")
+					}
+					// don't broadcast
+					broadcast = false
+					// get out of here
+					timeout = true
+				case <-timeoutChan:
+					if g.ShouldPrint(logHW3, 3) {
+						g.Printer.Println("Timeout")
+					}
 					timeout = true
 				}
-				if g.ShouldPrint(logHW3, 2) {
-					g.Printer.Println("Got", len(acks), "acks, need",
-						g.Majority)
-				}
-			case <-cAbort:
-				if g.ShouldPrint(logHW3, 3) {
-					g.Printer.Println("Aborting TLC")
-				}
-				// don't broadcast
-				broadcast = false
-				// get out of here
-				timeout = true
-			case <-timeoutChan:
-				if g.ShouldPrint(logHW3, 3) {
-					g.Printer.Println("Timeout")
-				}
-				timeout = true
 			}
 		}
-	}
-	if g.ShouldPrint(logHW3, 3) {
-		g.Printer.Println("Done TLC")
-	}
-	// delete channel
-	delete(g.BlockChans, id)
-
-	if broadcast {
-		// confirm tcl to all peers
-		tlc.Confirmed = int(id)
-
-		// select new message id
-		g.WantListMutex.Lock()
-		tlc.ID = g.WantList[g.Name]
-		g.WantList[g.Name]++
-		g.WantListMutex.Unlock()
-
-		// get a list of names from a map
-		names := make([]string, len(acks))
-		i := 0
-		for name := range acks {
-			names[i] = name
-			i++
+		if g.ShouldPrint(logHW3, 3) {
+			g.Printer.Println("Done TLC")
 		}
-		// print message and broadcast confirmed message
-		g.PrintReBroadcastID(int(id), names)
+		// delete channel
+		delete(g.BlockChans, id)
 
-		// store the confirmed message
-		g.ConfirmedTLC[g.Name][g.TLCRounds[g.Name]] = tlc
-		g.TLCAcksPerRound[g.TLCRounds[g.Name]]++
-		g.CheckChangeRound()
+		if broadcast {
+			// confirm tcl to all peers
+			tlc.Confirmed = int(id)
 
-		g.SendTLC(tlc)
-		// return to function that adds file to gossiper
-	} else {
-		g.CheckChangeRound()
+			// select new message id
+			g.WantListMutex.Lock()
+			tlc.ID = g.WantList[g.Name]
+			g.WantList[g.Name]++
+			g.WantListMutex.Unlock()
 
+			// get a list of names from a map
+			names := make([]string, len(acks))
+			i := 0
+			for name := range acks {
+				names[i] = name
+				i++
+			}
+			// print message and broadcast confirmed message
+			g.PrintReBroadcastID(int(id), names)
+
+			// store the confirmed message
+			g.ConfirmedTLC[g.Name][g.TLCRounds[g.Name]] = tlc
+			g.TLCAcksPerRound[g.TLCRounds[g.Name]]++
+			g.CheckChangeRound()
+
+			g.SendTLC(tlc)
+			// return to function that adds file to gossiper
+		} else {
+			g.CheckChangeRound()
+
+		}
+		if g.Hw3ex4 {
+			select {
+			case hash := <-g.QSCChan:
+				if hash == bp.Hash() {
+					if g.ShouldPrint(logHW3, 1) {
+						g.Printer.Println("QSC round won, indexed file")
+					}
+
+					return true
+				}
+				if g.ShouldPrint(logHW3, 1) {
+					g.Printer.Println("QSC round lost, did not index " +
+						"anything")
+				}
+				return false
+
+			}
+		}
+		return true
 	}
+	// store the confirmed message
+	g.ConfirmedTLC[g.Name][g.TLCRounds[g.Name]] = tlc
+	g.TLCAcksPerRound[g.TLCRounds[g.Name]]++
+
+	g.PrintConfirmedGossip(tlc.Origin, tlc.TxBlock.Transaction.Name,
+		hex.EncodeToString(tlc.TxBlock.Transaction.MetafileHash),
+		int(tlc.ID), int(tlc.TxBlock.Transaction.Size))
+
+	g.CheckChangeRound()
+	g.SendTLC(tlc)
+	return true
+
 }
 
 // CheckChangeRound check if we can move a round forward
@@ -217,23 +269,37 @@ func (g *Gossiper) CheckChangeRound() {
 	// if origin is at the same round as me, check if I can progress
 	// to next round
 	round := g.TLCRounds[g.Name]
-	count := g.TLCAcksPerRound[round]
+	// prepare print
+	confirmed := make([]u.TLCMessage, 0)
+	//i := 0
+	for _, v := range g.ConfirmedTLC {
+		if tlc, ok := v[round]; ok {
+			confirmed = append(confirmed, tlc)
+			//i++
+		}
+	}
+	//count := g.TLCAcksPerRound[round]
+	count := len(confirmed)
+
+	if g.ShouldPrint(logHW3, 3) {
+		g.Printer.Println(count, "acks at my round", round)
+	}
+
 	// if I have a majority of confirmed messages from this round
 	// if I have already sent a message at this round
 	if count >= g.Majority && !g.TLCReady {
 		// mytime++
 		g.TLCRounds[g.Name]++
 
-		// prepare print
-		confirmed := make([]u.TLCMessage, count)
-		i := 0
-		for _, v := range g.ConfirmedTLC {
-			if tlc, ok := v[round]; ok {
-				confirmed[i] = tlc
-				i++
-			}
+		if g.ShouldPrint(logHW3, 2) {
+			g.Printer.Println("Moving on", confirmed, count)
 		}
+
 		if g.Hw3ex4 {
+			if g.ShouldPrint(logHW3, 3) {
+				g.Printer.Println("Entering ex4 part")
+			}
+
 			if g.QSCStage != 2 {
 				// get message with highest fitness
 				var selected u.TLCMessage
@@ -251,6 +317,10 @@ func (g *Gossiper) CheckChangeRound() {
 
 				// print message
 				g.PrintAdvancingToRound(round+1, confirmed)
+				if g.ShouldPrint(logHW3, 2) {
+					g.Printer.Println("Sending next TLC:",
+						selected.TxBlock.Transaction.Name, selected.Fitness)
+				}
 
 				// send TLC confirming message with highest fitness
 				g.BuildAndSendTLC(selected.TxBlock, &selected.Fitness,
@@ -263,7 +333,7 @@ func (g *Gossiper) CheckChangeRound() {
 			// set of origin that agree upon g.SelectedTLC
 			selectedHash := g.SelectedTLC.TxBlock.Hash()
 			for _, v := range g.ConfirmedTLC {
-				for i := 0; i < 2; i++ {
+				for i := 0; i <= 2; i++ {
 					// check how many nodes share this confirmed message in the
 					// last 2 rounds
 					if tlc, ok := v[round-i]; ok {
@@ -311,8 +381,12 @@ func (g *Gossiper) CheckChangeRound() {
 				g.PrintConcensus(g.SelectedTLC, round,
 					g.CommittedHistory.Filenames)
 			} else {
+				if g.ShouldPrint(logHW3, 1) {
+					g.Printer.Println("No Consensus =(")
+				}
 				g.GotConsensus = false
 			}
+			g.QSCChan <- g.SelectedTLC.TxBlock.Hash()
 			// s+2 -> s next QSC round
 			g.QSCStage = 0
 
@@ -362,7 +436,7 @@ func (g *Gossiper) HandleTLCMessage(gp u.GossipPacket) {
 		// prints tlc message to console
 		g.PrintFreshTLC(tlc)
 
-		if g.Hw3ex3 {
+		if g.Hw3ex3 || g.Hw3ex4 {
 			if tlc.Confirmed > 0 && tlc.Origin != g.Name {
 				//confirmed message, increase the counter
 
@@ -404,9 +478,6 @@ func (g *Gossiper) HandleTLCMessage(gp u.GossipPacket) {
 					g.ConfirmedTLC[tlc.Origin] = make(map[int]u.TLCMessage)
 				}
 				g.ConfirmedTLC[tlc.Origin][round] = tlc
-
-				// trigger majority check
-				g.CheckChangeRound()
 			}
 		}
 
@@ -416,7 +487,7 @@ func (g *Gossiper) HandleTLCMessage(gp u.GossipPacket) {
 
 			// careful with rounds
 			g.AckTLC(tlc)
-			if g.Hw3ex3 {
+			if g.Hw3ex3 || g.Hw3ex4 {
 				found := false
 				// init TLCRounds of origin if not initialized yet
 				if _, ok := g.TLCRounds[tlc.Origin]; !ok {
@@ -439,8 +510,15 @@ func (g *Gossiper) HandleTLCMessage(gp u.GossipPacket) {
 		}
 		// monger to random peer
 		g.Monger(&gp, &gp, *g.GetRandPeer())
+	} else {
+		// if we already have it, confirmed at s+1 or s+2 increase number
+		if g.Hw3ex4 && tlc.Confirmed > 0 && g.QSCStage != 0 {
+			g.ConfirmedTLC[tlc.Origin][g.TLCRounds[tlc.Origin]] = tlc
+			g.TLCAcksPerRound[g.TLCRounds[g.Name]]++
+		}
 	}
-
+	// trigger majority check
+	g.CheckChangeRound()
 }
 
 // VerifyConfirmTLC VerifyConfirmTLC
@@ -463,9 +541,12 @@ func (g *Gossiper) VerifyConfirmTLC() {
 
 // AckTLC acks a TLC message
 func (g *Gossiper) AckTLC(tlc u.TLCMessage) {
-	if g.Hw3ex3 && !g.AckAll {
+	if (g.Hw3ex3 && !g.AckAll) || g.Hw3ex4 {
 		// don't acknowledge message from the past
 		if g.TLCRounds[tlc.Origin] < g.TLCRounds[g.Name] {
+			if g.ShouldPrint(logHW3, 2) {
+				g.Printer.Println("Don't ack TLC: from the past")
+			}
 			return
 		}
 
@@ -473,6 +554,10 @@ func (g *Gossiper) AckTLC(tlc u.TLCMessage) {
 		if !g.CheckTLCStatus(tlc.VectorClock.Want) {
 			// add it to the queue
 			g.OutTLCBuffer[&tlc] = g.TLCRounds[tlc.Origin]
+			if g.ShouldPrint(logHW3, 2) {
+				g.Printer.Println("Don't ack TLC: vector clock not " +
+					"satisfied yet")
+			}
 			return
 		}
 
@@ -481,17 +566,23 @@ func (g *Gossiper) AckTLC(tlc u.TLCMessage) {
 		for _, name := range g.CommittedHistory.Filenames {
 			if tlc.TxBlock.Transaction.Name == name {
 				// name already registered, don't ack
+				if g.ShouldPrint(logHW3, 2) {
+					g.Printer.Println("Don't ack TLC: name already taken")
+				}
 				return
 			}
 		}
 		currBlock := tlc.TxBlock
 		security := 0
-		for currBlock.Hash() != g.CommittedHistory.Tail.Hash &&
+		for currBlock.PrevHash != g.CommittedHistory.Tail.Hash &&
 			security < u.SecurityLimit {
 			p, ok := g.HashToBlock[currBlock.PrevHash]
 			// hash not known
 			if !ok {
 				// don't ack that shit
+				if g.ShouldPrint(logHW3, 2) {
+					g.Printer.Println("Don't ack TLC: unknown history")
+				}
 				return
 			}
 			currBlock = *p
@@ -499,6 +590,9 @@ func (g *Gossiper) AckTLC(tlc u.TLCMessage) {
 		}
 		if security == u.SecurityLimit {
 			// may be a loop or too long chain
+			if g.ShouldPrint(logHW3, 2) {
+				g.Printer.Println("Don't ack TLC: for security reasons")
+			}
 			return
 		}
 

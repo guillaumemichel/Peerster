@@ -216,29 +216,6 @@ func (g *Gossiper) HandleDataReply(drep u.DataReply) {
 			}
 		}
 	}
-	/*
-		// not wanted! register the file
-		copy(h[:], drep.HashValue)
-		metaf := make([]u.ShaHash, 0)
-		for i := 0; i < len(drep.Data); i += u.ShaSize {
-			// add all hashes to pending chunks of v
-			copy(h[:], drep.Data[i:i+u.ShaSize])
-			metaf = append(metaf, h)
-		}
-		c := make(chan bool)
-
-		fstatus := u.FileRequestStatus{
-			MetafileHash:  h,
-			PendingChunks: metaf,
-			MetafileOK:    true,
-			ChunkCount:    -1, // -1 indicate that we received spontaneously a mfile
-			Ack:           c,
-		}
-		g.FileStatus = append(g.FileStatus, &fstatus)
-		g.Printer.Println("RECEIVED metafile", hex.EncodeToString(drep.HashValue),
-			"from", drep.Origin)
-		g.Printer.Println("Warning: received data reply that I don't want!")
-	*/
 }
 
 // ReconstructFile reconstruct a file after received all the chunks
@@ -247,29 +224,6 @@ func (g *Gossiper) ReconstructFile(fstatus *u.FileRequestStatus) {
 
 	fstatus.File.Done = true
 	file := fstatus.File
-
-	/*
-		meta := make([]byte, 0)
-		for _, v := range fstatus.PendingChunks {
-			meta = append(meta, v[:]...)
-		}
-
-		// create he filestruct
-		file := u.FileStruct{
-			Name:         fstatus.Name,
-			MetafileHash: fstatus.MetafileHash,
-			Metafile:     meta,
-			NChunks:      fstatus.ChunkCount,
-		}
-
-		// create the chunk map
-		chunkMap := make(map[u.ShaHash]*u.FileChunk)
-		for i, v := range fstatus.PendingChunks {
-			chunkMap[v] = fstatus.Data[i]
-		}
-
-		file.Chunks = chunkMap
-	*/
 
 	// delete the filestatus from g
 	found := false
@@ -297,48 +251,6 @@ func (g *Gossiper) ReconstructFile(fstatus *u.FileRequestStatus) {
 	//g.FileStructs = append(g.FileStructs, file)
 }
 
-/*
-// SendFileTo sends a file to dest
-func (g *Gossiper) SendFileTo(dest, filename string) {
-	//resolve file
-	hash := make([]byte, 0)
-	found := false
-	// look in files stored on peer
-	for _, fstruct := range g.FileStructs {
-		if fstruct.Name == filename {
-			hash = fstruct.MetafileHash[:]
-			found = true
-			break
-		}
-	}
-	// look in files being downloaded by the peer
-	if !found {
-		for _, fstatus := range g.FileStatus {
-			if fstatus.Name == filename {
-				hash = fstatus.MetafileHash[:]
-				found = true
-				break
-			}
-		}
-	}
-	// if not found print error and abort
-	if !found {
-		g.Printer.Println("Error: file", filename, "not found!")
-		return
-	}
-
-	// create data request
-	dreq := u.DataRequest{
-		Origin:      dest,
-		Destination: g.Name,
-		HopLimit:    u.DefaultHopLimit,
-		HashValue:   hash,
-	}
-	// handle the data request, this will generate the corresponding data reply
-	g.HandleDataReq(dreq)
-}
-*/
-
 // IndexFile indexes a file from the given filename and adds it to the gossiper
 func (g *Gossiper) IndexFile(filename string) {
 	// load the file from os
@@ -360,8 +272,10 @@ func (g *Gossiper) IndexFile(filename string) {
 		}
 	}
 	// manage TLC
-	if g.Hw3ex2 || g.Hw3ex3 {
-		g.ManageTLC(filename, fstruct.Size, fstruct.MetafileHash)
+	if g.Hw3ex2 || g.Hw3ex3 || g.Hw3ex4 {
+		if !g.ManageTLC(filename, fstruct.Size, fstruct.MetafileHash) {
+			return
+		}
 	}
 	// once it is confirmed, continue
 	// may take some time to get acks

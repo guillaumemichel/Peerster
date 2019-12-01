@@ -91,6 +91,7 @@ type Gossiper struct {
 	SelectedTLC      u.TLCMessage
 	GotConsensus     bool
 	HashToBlock      map[u.ShaHash]*u.BlockPublish
+	QSCChan          chan u.ShaHash
 }
 
 // NewGossiper : creates a new gossiper with the given parameters
@@ -264,6 +265,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		QSCStage:         0,
 		GotConsensus:     true,
 		HashToBlock:      hToBlock,
+		QSCChan:          make(chan u.ShaHash),
 	}
 }
 

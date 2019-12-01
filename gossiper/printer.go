@@ -196,7 +196,7 @@ func (g *Gossiper) PrintUnconfirmedGossip(origin, filename, metahash string,
 func (g *Gossiper) PrintConfirmedGossip(origin, filename, metahash string,
 	id, size int) {
 	if g.ShouldPrint(logHW3, 1) {
-		g.Printer.Printf("CONFIRMED GOSSIP origin %s ID %d file name %s size"+
+		g.Printer.Printf("CONFIRMED GOSSIP origin %s ID %d file name %s size "+
 			"%d metahash %s\n", origin, id, filename, size, metahash)
 	}
 }

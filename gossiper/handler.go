@@ -168,7 +168,7 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 					g.PrintRumorMessage(*rumor, addrStr)
 
 					// verify if we should send a TLC confirmation
-					if g.Hw3ex3 {
+					if g.Hw3ex3 || g.Hw3ex4 {
 						g.VerifyConfirmTLC()
 					}
 
@@ -216,9 +216,10 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 				// send status to neighbor
 				g.SendStatus(udpAddr)
 				// verify if we should send tlc ack for previous tlc
-				if g.Hw3ex3 {
+				if g.Hw3ex3 || g.Hw3ex4 {
 					g.VerifyConfirmTLC()
 				}
+
 				// handle tlc
 				g.HandleTLCMessage(*rcvMsg)
 
