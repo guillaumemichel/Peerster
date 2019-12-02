@@ -14,6 +14,9 @@ import (
 func (g *Gossiper) ManageSearch(initialBudget *uint64, keywords []string) {
 	g.SearchChans[&keywords] = make(chan u.SearchReply)
 
+	// reset search as new one
+	//g.GUISearchResults = make([]string, 0)
+
 	endChan := make(chan bool)
 	doubleBudget := initialBudget == nil
 

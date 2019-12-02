@@ -249,6 +249,11 @@ func (g *Gossiper) GetPeerID() string {
 	return g.Name
 }
 
+// GetTLCRound GetTLCRound
+func (g *Gossiper) GetTLCRound() int {
+	return g.TLCRounds[g.Name]
+}
+
 // GetNewMessages : return the new unread messages
 func (g *Gossiper) GetNewMessages(c int) []u.RumorMessage {
 	g.NewMessages.Mutex.Lock()
@@ -260,23 +265,6 @@ func (g *Gossiper) GetNewMessages(c int) []u.RumorMessage {
 	}
 	return messages[c:]
 }
-
-/*
-// GetLastIDFromOrigin returns the last message ID received from origin
-func (g *Gossiper) GetLastIDFromOrigin(origin string) uint32 {
-	// load the history for the given origin
-	//g.HistoryMutex.Lock()
-	v, ok := g.RumorHistory.Load(origin)
-	//g.HistoryMutex.Unlock()
-	if !ok {
-		// if author not found in history return 0
-		return 0
-	}
-	// if found, we return the length of the rumor history associated with
-	// the origin, which is equal to the last message id
-	return uint32(len(v.([]u.HistoryMessage)))
-}
-*/
 
 // CheckSearchFileComplete check if a search file is complete and update the
 // corresponding field if it is
@@ -296,4 +284,26 @@ func (g *Gossiper) CheckSearchFileComplete(sf *u.SearchFile) {
 		sf.Complete = true
 		g.SearchResults = append(g.SearchResults, *sf)
 	}
+}
+
+// GetBlockchainMessageHistory for GUI
+func (g *Gossiper) GetBlockchainMessageHistory(n int) []string {
+	if n >= len(g.GUIlogHistory) {
+		return nil
+	}
+	return g.GUIlogHistory[n:]
+}
+
+// GetCommittedHistory GetCommittedHistory
+func (g *Gossiper) GetCommittedHistory(n int) []string {
+	if n >= g.CommittedHistory.Size-1 {
+		return nil
+	}
+	toRet := make([]string, g.CommittedHistory.Size-n-1)
+	currNode := g.CommittedHistory.Tail
+	for i := g.CommittedHistory.Size - n - 2; i >= 0; i-- {
+		toRet[i] = currNode.Block.Transaction.Name
+		currNode = currNode.Prev
+	}
+	return toRet
 }

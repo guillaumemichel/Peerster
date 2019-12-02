@@ -3,10 +3,12 @@ package gossiper
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	u "github.com/guillaumemichel/Peerster/utils"
 )
@@ -18,6 +20,105 @@ const (
 
 // StartServer : starts a server
 func (g *Gossiper) StartServer() {
+
+	downloadFile := func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case getreq:
+			s := r.FormValue("number")
+			n, _ := strconv.Atoi(s)
+			fmt.Println(n)
+			if len(g.GUISearchResults) > n {
+				str := g.GUISearchResults[n]
+				str = strings.Split(strings.Split(str, "=")[1], " ")[0]
+				h, err := hex.DecodeString(str)
+				if err != nil {
+					g.Printer.Println(err)
+					return
+				}
+				var hash u.ShaHash
+				copy(hash[:], h)
+				for _, r := range g.SearchResults {
+					if r.MetafileHash == hash && r.Complete {
+						g.HandleDownload(r.Name, h)
+						break
+					}
+				}
+			}
+			// manage filedownload
+
+			//g.SearchResults
+		}
+	}
+
+	searchRes := func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case getreq:
+			msgList := g.GUISearchResults
+			if len(msgList) > 0 {
+				msgListJSON, _ := json.Marshal(msgList)
+				// error handling, etc...
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(msgListJSON)
+			}
+		}
+	}
+
+	getTLCRound := func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case getreq:
+			round := g.GetTLCRound()
+			msgListJSON, _ := json.Marshal(round)
+			// error handling, etc...
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(msgListJSON)
+		}
+	}
+
+	committedHistory := func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case getreq:
+			s := r.FormValue("number")
+			n, _ := strconv.Atoi(s)
+			msgList := g.GetCommittedHistory(n)
+			if msgList != nil {
+				msgListJSON, _ := json.Marshal(msgList)
+				// error handling, etc...
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(msgListJSON)
+			}
+		}
+	}
+
+	blockchainMessageHistory := func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case getreq:
+			s := r.FormValue("number")
+			n, _ := strconv.Atoi(s)
+			msgList := g.GetBlockchainMessageHistory(n)
+			if msgList != nil {
+				msgListJSON, _ := json.Marshal(msgList)
+				// error handling, etc...
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(msgListJSON)
+			}
+		}
+	}
+
+	sendSearchReq := func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case getreq:
+			search := r.FormValue("search")
+			keywords := u.SplitKeywords(search)
+			n := r.FormValue("budget")
+			nn, _ := strconv.Atoi(n)
+			budget := uint64(nn)
+			g.ManageSearch(&budget, keywords)
+		}
+	}
 
 	getLatestRumorMessagesHandler := func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -168,6 +269,12 @@ func (g *Gossiper) StartServer() {
 	http.HandleFunc("/pm", pmHandler)
 	http.HandleFunc("/index", indexFile)
 	http.HandleFunc("/requestfile", requestFile)
+	http.HandleFunc("/search", sendSearchReq)
+	http.HandleFunc("/searchresults", searchRes)
+	http.HandleFunc("/blockchain", blockchainMessageHistory)
+	http.HandleFunc("/committed_history", committedHistory)
+	http.HandleFunc("/tlc", getTLCRound)
+	http.HandleFunc("/download", downloadFile)
 
 	address := u.LocalhostAddr + ":" + strconv.Itoa(g.GUIPort)
 	ok := true

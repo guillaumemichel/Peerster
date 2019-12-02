@@ -2,6 +2,7 @@ package gossiper
 
 import (
 	"encoding/hex"
+	"fmt"
 	"strconv"
 
 	u "github.com/guillaumemichel/Peerster/utils"
@@ -162,17 +163,19 @@ func (g *Gossiper) PrintHashOfIndexedFile(file, hash string, n int) {
 // PrintFoundMatch print found match after file search
 func (g *Gossiper) PrintFoundMatch(filename, peer, metahash string,
 	chunks []uint64) {
-	if g.ShouldPrint(logHW3, 1) {
 
-		c := ""
-		for i, v := range chunks {
-			if i != 0 {
-				c += ","
-			}
-			c += strconv.Itoa(int(v))
+	c := ""
+	for i, v := range chunks {
+		if i != 0 {
+			c += ","
 		}
-		g.Printer.Printf("FOUND match %s at %s metafile=%s chunks=%s\n",
-			filename, peer, metahash, c)
+		c += strconv.Itoa(int(v))
+	}
+	str := fmt.Sprintf("FOUND match %s at %s metafile=%s chunks=%s\n",
+		filename, peer, metahash, c)
+	g.GUISearchResults = append(g.GUISearchResults, str)
+	if g.ShouldPrint(logHW3, 1) {
+		g.Printer.Println(str)
 	}
 }
 
@@ -195,9 +198,11 @@ func (g *Gossiper) PrintUnconfirmedGossip(origin, filename, metahash string,
 // PrintConfirmedGossip message
 func (g *Gossiper) PrintConfirmedGossip(origin, filename, metahash string,
 	id, size int) {
+	str := fmt.Sprintf("CONFIRMED GOSSIP origin %s ID %d file name %s size "+
+		"%d metahash %s", origin, id, filename, size, metahash)
+	g.GUIlogHistory = append(g.GUIlogHistory, str)
 	if g.ShouldPrint(logHW3, 1) {
-		g.Printer.Printf("CONFIRMED GOSSIP origin %s ID %d file name %s size "+
-			"%d metahash %s\n", origin, id, filename, size, metahash)
+		g.Printer.Println(str)
 	}
 }
 
@@ -245,30 +250,32 @@ func (g *Gossiper) NoKnownPeer() {
 
 // PrintAdvancingToRound message
 func (g *Gossiper) PrintAdvancingToRound(myTime int, confirmed []u.TLCMessage) {
+	str := "ADVANCING TO round " + strconv.Itoa(myTime) +
+		" BASED ON CONFIRMED MESSAGES"
+	for i, c := range confirmed {
+		str += " origin" + strconv.Itoa(i+1) + " " + c.Origin + " ID" +
+			strconv.Itoa(i+1) + " " + strconv.Itoa(int(c.ID)) + ","
+	}
+	str = str[:len(str)-1]
+	g.GUIlogHistory = append(g.GUIlogHistory, str)
 	if g.ShouldPrint(logHW3, 1) {
-		str := "ADVANCING TO round " + strconv.Itoa(myTime) +
-			" BASED ON CONFIRMED MESSAGES"
-		for i, c := range confirmed {
-			str += " origin" + strconv.Itoa(i+1) + " " + c.Origin + " ID" +
-				strconv.Itoa(i+1) + " " + strconv.Itoa(int(c.ID)) + ","
-		}
-		g.Printer.Println(str[:len(str)-1])
+		g.Printer.Println(str)
 	}
 }
 
 // PrintConcensus message
 func (g *Gossiper) PrintConcensus(tlc u.TLCMessage, round int, files []string) {
+	str := "CONSENSUS ON QSC round " + strconv.Itoa(round) +
+		" message origin " + tlc.Origin + " ID " +
+		strconv.Itoa(int(tlc.ID)) + " file names "
+	for _, name := range files {
+		str += name + " "
+	}
+	str += "size " + strconv.Itoa(int(tlc.TxBlock.Transaction.Size)) +
+		" metahash " +
+		hex.EncodeToString(tlc.TxBlock.Transaction.MetafileHash)
+	g.GUIlogHistory = append(g.GUIlogHistory, str)
 	if g.ShouldPrint(logHW3, 1) {
-		str := "CONSENSUS ON QSC round " + strconv.Itoa(round) +
-			" message origin " + tlc.Origin + " ID " +
-			strconv.Itoa(int(tlc.ID)) + " file names "
-		for _, name := range files {
-			str += name + " "
-		}
-		str += "size " + strconv.Itoa(int(tlc.TxBlock.Transaction.Size)) +
-			" metahash " +
-			hex.EncodeToString(tlc.TxBlock.Transaction.MetafileHash)
 		g.Printer.Println(str)
-
 	}
 }

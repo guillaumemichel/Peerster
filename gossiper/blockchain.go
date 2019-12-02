@@ -251,8 +251,12 @@ func (g *Gossiper) BuildAndSendTLC(bp u.BlockPublish, fit *float32,
 		return true
 	}
 	// store the confirmed message
-	g.ConfirmedTLC[g.Name][g.TLCRounds[g.Name]] = tlc
+	if _, ok := g.ConfirmedTLC[tlc.Origin][g.TLCRounds[g.Name]]; ok &&
+		g.ShouldPrint(logHW3, 2) {
+		g.Printer.Println("Already written 3 !!!!")
+	}
 	g.TLCAcksPerRound[g.TLCRounds[g.Name]]++
+	g.ConfirmedTLC[g.Name][g.TLCRounds[g.Name]] = tlc
 
 	g.PrintConfirmedGossip(tlc.Origin, tlc.TxBlock.Transaction.Name,
 		hex.EncodeToString(tlc.TxBlock.Transaction.MetafileHash),
@@ -477,6 +481,11 @@ func (g *Gossiper) HandleTLCMessage(gp u.GossipPacket) {
 				if _, ok = g.ConfirmedTLC[tlc.Origin]; !ok {
 					g.ConfirmedTLC[tlc.Origin] = make(map[int]u.TLCMessage)
 				}
+				if _, ok := g.ConfirmedTLC[tlc.Origin][round]; ok &&
+					g.ShouldPrint(logHW3, 2) {
+					g.Printer.Println("Already written 1 !!!!")
+					g.Printer.Println(g.ConfirmedTLC)
+				}
 				g.ConfirmedTLC[tlc.Origin][round] = tlc
 			}
 		}
@@ -513,8 +522,12 @@ func (g *Gossiper) HandleTLCMessage(gp u.GossipPacket) {
 	} else {
 		// if we already have it, confirmed at s+1 or s+2 increase number
 		if g.Hw3ex4 && tlc.Confirmed > 0 && g.QSCStage != 0 {
-			g.ConfirmedTLC[tlc.Origin][g.TLCRounds[tlc.Origin]] = tlc
+			if _, ok := g.ConfirmedTLC[tlc.Origin][g.TLCRounds[tlc.Origin]]; ok &&
+				g.ShouldPrint(logHW3, 2) {
+				g.Printer.Println("Already written 2 !!!!")
+			}
 			g.TLCAcksPerRound[g.TLCRounds[g.Name]]++
+			g.ConfirmedTLC[tlc.Origin][g.TLCRounds[tlc.Origin]] = tlc
 		}
 	}
 	// trigger majority check
