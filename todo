@@ -10,3 +10,5 @@ TODO:
 - Careful with computing other hosts Round if some TLC are not confirmed
 - Investigate empty messages (search reply ???)
 - Skip round g
+
+- Very careful, data request if file not indexed yet!!!
