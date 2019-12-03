@@ -92,6 +92,7 @@ type Gossiper struct {
 	GotConsensus     bool
 	HashToBlock      map[u.ShaHash]*u.BlockPublish
 	QSCChan          chan u.ShaHash
+	QSCWaiting       bool
 
 	GUIlogHistory    []string
 	GUISearchResults []string
@@ -271,6 +272,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		GotConsensus:     true,
 		HashToBlock:      hToBlock,
 		QSCChan:          make(chan u.ShaHash),
+		QSCWaiting:       false,
 		GUIlogHistory:    logHistory,
 		GUISearchResults: searchResults,
 	}

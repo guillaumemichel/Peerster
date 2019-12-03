@@ -220,8 +220,10 @@ func (g *Gossiper) HandleGossip(rcvBytes []byte, udpAddr *net.UDPAddr) {
 					g.VerifyConfirmTLC()
 				}
 
-				// handle tlc
-				g.HandleTLCMessage(*rcvMsg)
+				if g.WriteGossipToHistory(*rcvMsg) {
+					g.AckTLC(*rcvMsg)
+					g.Monger(rcvMsg, rcvMsg, *g.GetRandPeer())
+				}
 
 			} else if rcvMsg.Ack != nil {
 				// TLC ack

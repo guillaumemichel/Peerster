@@ -277,6 +277,7 @@ func (g *Gossiper) IndexFile(filename string) {
 			return
 		}
 	}
+
 	// once it is confirmed, continue
 	// may take some time to get acks
 
