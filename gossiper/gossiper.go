@@ -70,6 +70,7 @@ type Gossiper struct {
 	BlockChans map[uint32][]*chan u.TLCAck // tlc ack channels
 	BlockRumor map[string]map[string]map[uint32]*chan bool
 	// addr -> origin -> ID -> chan
+	AlreadyPrinted map[string]bool
 
 	PendingGossip map[string]u.AckValues               // uniqueidentifier->chan
 	PacketHistory map[string]map[uint32]u.GossipPacket // G0->3->packet
@@ -275,6 +276,7 @@ func NewGossiper(address, name, UIPort, GUIPort, peerList *string,
 		QSCWaiting:       false,
 		GUIlogHistory:    logHistory,
 		GUISearchResults: searchResults,
+		AlreadyPrinted:   make(map[string]bool),
 	}
 }
 

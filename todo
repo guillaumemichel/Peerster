@@ -1,13 +1,8 @@
 TODO:
 
-- Files are the same if they have the same metafilehash && Name
-- GUI
-- Scroll history blockchain / Search
-- Search results / select file to dl
-- Part 2
+- Files are the same if they have the same metafilehash && Name | balek
 - TEEEEESTS
 
-- Careful with computing other hosts Round if some TLC are not confirmed
 - Investigate empty messages (search reply ???)
 - Skip round g
 

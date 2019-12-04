@@ -12,6 +12,13 @@ wget https://media1.tenor.com/images/4c65228622e5b79fc6af8cba3c189fa9/tenor.gif 
 mv tenor.gif kiddo.gif > /dev/null 2>&1
 wget https://www.ietf.org/rfc/rfc1918.txt > /dev/null 2>&1
 
+counter=0
+while [ $counter -lt 9 ]
+do
+	echo File$counter > file$counter.txt
+	((counter++))
+done
+
 cd ..
 
 counter=0

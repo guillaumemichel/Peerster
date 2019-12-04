@@ -200,9 +200,11 @@ func (g *Gossiper) PrintConfirmedGossip(origin, filename, metahash string,
 	id, size int) {
 	str := fmt.Sprintf("CONFIRMED GOSSIP origin %s ID %d file name %s size "+
 		"%d metahash %s", origin, id, filename, size, metahash)
-	g.GUIlogHistory = append(g.GUIlogHistory, str)
-	if g.ShouldPrint(logHW3, 1) {
-		g.Printer.Println(str)
+	if _, ok := g.AlreadyPrinted[str]; !ok {
+		g.GUIlogHistory = append(g.GUIlogHistory, str)
+		if g.ShouldPrint(logHW3, 1) {
+			g.Printer.Println(str)
+		}
 	}
 }
 

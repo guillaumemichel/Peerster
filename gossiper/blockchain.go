@@ -251,7 +251,7 @@ func (g *Gossiper) BuildAndSendTLC(bp u.BlockPublish, fit *float32) bool {
 
 			// return to function that adds file to gossiper
 		}
-		if g.Hw3ex4 && g.QSCStage == 0 {
+		if g.Hw3ex4 && broadcast && g.QSCStage == 0 {
 			g.CheckChangeRound()
 			if !g.QSCWaiting {
 				g.QSCWaiting = true
@@ -275,16 +275,26 @@ func (g *Gossiper) BuildAndSendTLC(bp u.BlockPublish, fit *float32) bool {
 				}
 			}
 		}
+		if broadcast {
+			g.CheckChangeRound()
+			return true
+		}
+		g.Printer.Println("\nNO BROADCAST")
+		//g.TLCRounds[g.Name]++
 		g.CheckChangeRound()
-		return true
+
+		//g.NextTLC()
+		return false
 	}
-	// store the confirmed message
-	/*
+	return true
+}
+
+// store the confirmed message
+/*
 		if _, ok := g.ConfirmedTLC[tlc.Origin][g.TLCRounds[g.Name]]; ok &&
 			g.ShouldPrint(logHW3, 2) {
 			g.Printer.Println("Already written 3 !!!!")
 		}
-	*/
 	g.TLCAcksPerRound[g.TLCRounds[g.Name]]++
 	g.ConfirmedTLC[g.Name][g.TLCRounds[g.Name]] = tlc
 	if g.ShouldPrint(logHW3, 2) {
@@ -311,8 +321,7 @@ func (g *Gossiper) BuildAndSendTLC(bp u.BlockPublish, fit *float32) bool {
 	g.CheckChangeRound()
 	g.SendTLC(tlc)
 	return true
-
-}
+*/
 
 // CheckChangeRound check if we can move a round forward
 func (g *Gossiper) CheckChangeRound() {
@@ -715,7 +724,8 @@ func (g *Gossiper) AckTLC(gp u.GossipPacket) {
 		}
 		currBlock := tlc.TxBlock
 		security := 0
-		for currBlock.PrevHash != g.CommittedHistory.Tail.Hash &&
+		for (currBlock.PrevHash != g.CommittedHistory.Tail.Hash ||
+			currBlock.PrevHash != g.CommittedHistory.Start.Hash) &&
 			security < u.SecurityLimit {
 			p, ok := g.HashToBlock[currBlock.PrevHash]
 			// hash not known
@@ -741,7 +751,9 @@ func (g *Gossiper) AckTLC(gp u.GossipPacket) {
 
 	}
 	g.HandleTLCMessage(tlc)
-	g.SendTLCAck(tlc)
+	if tlc.Confirmed < 0 {
+		g.SendTLCAck(tlc)
+	}
 }
 
 // SendTLCAck SendTLCAck
