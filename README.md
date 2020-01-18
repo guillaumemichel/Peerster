@@ -16,7 +16,7 @@ go get github.com/dedis/protobuf
 
 You will need to install the peerster folder at the following location `$GOPATH/src/github.com/guillaumemichel/Peerster`. You can easily do so by using the command:
 
-```bash
+```
 go get github.com/guillaumemichel/Peerster
 ```
 
@@ -24,7 +24,7 @@ go get github.com/guillaumemichel/Peerster
 
 Please build the program by using `go build` in `Peerster/` and in `Peerster/client/`. Once it is done, you can start Peerster instances. The usage of `./Peerster` is the following:
 
-```bash
+```
 Usage of ./Peerster:
   -GUIPort string
         port for the GUI client (default "8080")
@@ -46,7 +46,7 @@ Usage of ./Peerster:
 
 You can interract with the gossiper using a client. The usage is the following:
 
-```bash
+```
 Usage of ./client:
   -UIPort string
         port for the UI client (default "8080")
