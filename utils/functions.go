@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dedis/protobuf"
+	"go.dedis.ch/protobuf"
 )
 
 // ProtobufMessage : encapsulate a client message using protobuf
