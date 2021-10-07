@@ -1,14 +1,15 @@
 # Peerster
 
-Decentralized Systems Engineering homework
+The Peerster is a decentralised messaging and file sharing application. 
 
-## What is this repo
+## Design
+For messaging, Gossipers act as servers interacting with each other to exchange the messages from their respective clients. Routes are advertised through a Destination-Sequenced Distance Vector (DSDV) routing scheme and Route Rumormongering. It is possible to address a message or file privately to a remote peer, or to broadcast it to all connected clients.
 
-The Peerster is a decentralised messaging and file sharing application.
+Files are identified by their metahash and divided in chunks of 8kb. The chunks of a file can be requested and concurrently downloaded from multiple peers hosting (chunks of) the file, increasing file availability and performance. A file can also be identified by its name. In order to guarantee the uniqueness of names, a blockchain was implemented using the Que Sera Consensus [1] on top of Threshold Logical Clocks (TLC). The file search function, making use of the underlying rumormongering and blockchain, queries peers to find the metahash of the file whose name matches with the provided regex. 
 
 ## Dependencies
 
-To run this application, you will need to have go installed on your machine. You also need the package [protobuf](https://github.com/DeDiS/protobuf) from the [DEDIS](https://www.epfl.ch/labs/dedis/), it can be downloaded using:
+To run this application, you will need to have `go` installed on your machine. You also need the package [protobuf](https://github.com/DeDiS/protobuf) from the [DEDIS](https://www.epfl.ch/labs/dedis/), it can be downloaded using:
 
 ```bash
 go get github.com/dedis/protobuf
@@ -83,3 +84,5 @@ When the gossiper will discover new contacts, these new contacts will appear in 
 ![alt text](resources/file_menu.png)
 
 Next to the button to send a message, there is a `file` button. When clicking it, it opens the file interface. You can index a file by selecting the file (only in the _SharedFiles/ folder) and clicking the `index` button. This file will now be available for other peers to download it. You can also request files to a contact by going in the private chat conversation, and writing a filename and hash in the file interface. The hash is the hash of the metafile of the file you request, and the filename is the name under which the file is going to be stored.
+
+[1] Que Sera Consensus: Simple Asynchronous Agreement with Private Coins and Threshold Logical Clocks, Bryan Ford, Philipp Jovanovic and Ewa Syta, March 2020, [arXiv:2003.02291](https://arxiv.org/pdf/2003.02291.pdf)
